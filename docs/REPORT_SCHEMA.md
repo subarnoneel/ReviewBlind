@@ -118,7 +118,7 @@ byte-identical.
 | `NOT_READY` | `NOT READY FOR ANONYMOUS REVIEW` |
 | `REVIEW_REQUIRED` | `MANUAL REVIEW REQUIRED` |
 | `NO_KNOWN_LEAKS` | `NO KNOWN LEAKS DETECTED` |
-| `NO_KNOWN_LEAKS_INCOMPLETE` | `NO KNOWN LEAKS DETECTED — SCAN INCOMPLETE` |
+| `NO_KNOWN_LEAKS_INCOMPLETE` | `NO KNOWN LEAKS DETECTED - SCAN INCOMPLETE` |
 
 ### Skip reasons
 
@@ -133,6 +133,8 @@ byte-identical.
 | `SYMLINK_NOT_FOLLOWED` | A symlink, by default or because it leaves the root |
 | `GIT_UNAVAILABLE` | Git is not installed, or refused the repository. `path` is `.git` |
 | `GIT_TRUNCATED` | History exceeded `--max-commits`. `path` is `.git` |
+| `SUBMODULE_NOT_INSPECTED` | A submodule or nested Git repository. Only its path is known |
+| `TOO_MANY_MATCHES` | More matches in one file than are examined or listed |
 | `SCANNER_ERROR` | A scanner failed on this artifact |
 
 Any entry in `skipped` makes `scan.complete` false.

@@ -25,14 +25,16 @@ package that builds with one smoke test.
 
 **Tests:** +22, for 49 in total.
 
-**Deliver:** `inventory.py`, `engine.py`, `scanners/base.py`, `scanners/text.py`,
-`scanners/paths.py`, `reporters/terminal.py`, `cli.py` with `scan` and `rules`, and
-`__main__.py`. Enable `[project.scripts]` in `pyproject.toml`.
+**Deliver:** `utils/git.py` with its attack tests, `utils/files.py`, `inventory.py`, `signals.py`, `engine.py`,
+`scanners/base.py`, `scanners/text.py`, `scanners/paths.py`, `reporters/terminal.py`, `cli.py` with `scan` and
+`rules`, and `__main__.py`. Enable `[project.scripts]` in `pyproject.toml`.
 
 **Exit criteria:**
 - `reviewblind scan .` works on a text-only repository.
-- Exit codes 0, 1, 2 and 4 work.
+- Exit codes 0, 1, 2, 3 and 4 work.
 - `inventory` applies each target's scope.
+- No attack test can make Git run repository-defined code.
+- Files no scanner can read yet are reported as skipped, never as inspected.
 
 ## M3 — Reports and completeness
 
@@ -43,18 +45,16 @@ allowlist handling, and the incomplete-scan state.
 
 **Exit criteria:**
 - JSON conforms to `docs/REPORT_SCHEMA.md`, and two runs are byte-identical.
-- Exit code 3 works with `--strict`.
 - RB801–RB805 fire. The output-injection tests pass.
 
 ## M4 — Git and manifests
 
 **Tests:** +20, for 83 in total. This passes the 70-test floor.
 
-**Deliver:** `utils/git.py`, `scanners/git.py`, `scanners/manifests.py`, and `utils/files.py`.
+**Deliver:** `scanners/git.py` and `scanners/manifests.py`.
 
 **Exit criteria:**
-- All Git safety tests pass. **Do this before any other Git work:** the hardened runner
-  and its tests come first.
+- `log`, `rev-list` and `remote -v` join the Git runner's allowlist only with an attack test for each.
 - RB301–RB304 and RB401–RB404 fire, with correct severity per target.
 
 ## M5 — Discovery and init
