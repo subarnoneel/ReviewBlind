@@ -25,6 +25,7 @@ class Inventory:
     notes: tuple[str, ...]
     git_present: bool  # a .git directory or file at the scan root
     git_packaged: bool  # the archive will include it: see RB801
+    git_entries: tuple[str, ...]  # every .git in the tree that is not excluded
 
 
 def compile_excludes(patterns: tuple[str, ...]) -> pathspec.GitIgnoreSpec:
@@ -54,6 +55,7 @@ class _Collector:
         self.artifacts: list[Artifact] = []
         self.skipped: list[SkippedArtifact] = []
         self.excluded = 0
+        self.git_entries: list[str] = []
 
     def _skip(self, relpath: str, reason: SkipReason, detail: str) -> None:
         self.skipped.append(SkippedArtifact(relpath, reason, detail))
@@ -82,8 +84,11 @@ class _Collector:
                 self._skip(directory or ".", SkipReason.UNREADABLE, error.strerror or str(error))
                 continue
             for name in names:
-                if name != ".git":  # never descended into, whatever the target
-                    self._visit(f"{directory}/{name}" if directory else name, listed_by_git=False)
+                relpath = f"{directory}/{name}" if directory else name
+                if name == ".git":  # never descended into, whatever the target
+                    self.git_entries.append(relpath)
+                else:
+                    self._visit(relpath, listed_by_git=False)
 
     def _visit(self, relpath: str, *, listed_by_git: bool) -> None:
         path = self._root / relpath
@@ -202,6 +207,8 @@ def build_inventory(root: Path, target: Target, settings: ScanSettings) -> Inven
         notes.append("Git could not read this repository, so every file was inspected.")
 
     git_present = os.path.lexists(root / ".git")
+    git_entries = {".git"} if git_present else set()
+    git_entries.update(collector.git_entries)
     return Inventory(
         artifacts=tuple(sorted(collector.artifacts, key=lambda item: item.relpath)),
         skipped=tuple(sorted(collector.skipped, key=lambda item: item.path)),
@@ -210,5 +217,8 @@ def build_inventory(root: Path, target: Target, settings: ScanSettings) -> Inven
         git_present=git_present,
         git_packaged=(
             target is Target.ARCHIVE and git_present and not excludes.match_file(".git/config")
+        ),
+        git_entries=tuple(
+            sorted(entry for entry in git_entries if not excludes.match_file(f"{entry}/config"))
         ),
     )

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from reviewblind.config import Config
+from reviewblind.inventory import Inventory
 from reviewblind.matching import IdentityMatcher
 from reviewblind.models import Artifact, Detection, SkippedArtifact, SkipReason, Target
 from reviewblind.signals import SignalMatcher
@@ -27,6 +28,7 @@ class ScanContext:
     target: Target
     matcher: IdentityMatcher
     signals: SignalMatcher
+    inventory: Inventory
     skipped: list[SkippedArtifact] = field(default_factory=list)
 
     def report_skip(self, path: str, reason: SkipReason, detail: str | None = None) -> None:

@@ -108,7 +108,7 @@ class Severity(Enum):       # ordered: BLOCKER > WARNING > REVIEW > INFO
 class Confidence(Enum):     # ordered: HIGH > MEDIUM > LOW
 class Target(Enum):         # MIRROR, ARCHIVE, REPOSITORY
 class IdentityKind(Enum):   # NAME, EMAIL, USERNAME, AFFILIATION, URL, ALIAS
-class ArtifactKind(Enum):   # TEXT, MANIFEST, NOTEBOOK, PDF, IMAGE, ARCHIVE, BINARY
+class ArtifactKind(Enum):   # TEXT, MANIFEST, NOTEBOOK, PDF, IMAGE, ARCHIVE, BINARY, REVIEWBLIND
 class EvidenceClass(Enum):  # DIRECT, INDIRECT, ACRONYM, AMBIGUOUS
 class SkipReason(Enum):     # see REPORT_SCHEMA.md
 
@@ -227,8 +227,8 @@ class RepositoryScanner(Protocol):
     def scan(self, context: ScanContext) -> Iterable[Detection]: ...
 ```
 
-`ScanContext` is read-only. It holds the config, the target, the compiled identity
-matcher, the inventory, and a `report_skip()` callback for recording incompleteness.
+`ScanContext` is read-only. It holds the config, the target, the compiled identity and signal
+matchers, the inventory, and a `report_skip()` callback for recording incompleteness.
 
 | Scanner | Type | Handles | Rules |
 |---|---|---|---|
@@ -238,7 +238,8 @@ matcher, the inventory, and a `report_skip()` callback for recording incompleten
 | `NotebookScanner` | File | NOTEBOOK | RB501–504 |
 | `PdfScanner` | File | PDF | RB601–602 |
 | `ImageScanner` | File | IMAGE | RB701–703 |
-| `PackagingScanner` | File and repository | Every artifact; root | RB801–805 |
+| `PackagingScanner` | File | BINARY, ARCHIVE, REVIEWBLIND and OS metadata | RB802–805 |
+| `GitDirectoryScanner` | Repository | Every `.git` in the tree | RB801 |
 | `GitScanner` | Repository | The root | RB401–404 |
 
 The engine wraps every scanner call. A `RecursionError`, `MemoryError` or any other
@@ -252,6 +253,8 @@ results are sorted regardless.
 
 The checks run in this order, and the first match wins.
 
+0. Our own files: `.reviewblind.toml`, or a saved report recognized by its first bytes → REVIEWBLIND. These
+   are reported by RB805 and never scanned as text.
 1. Filename: `pyproject.toml`, `package.json`, `setup.py`, `setup.cfg`, `CITATION.cff`,
    `LICENSE*`, `NOTICE*`, `COPYING*`, `AUTHORS*` → MANIFEST
 2. Extension: `.ipynb` → NOTEBOOK; `.pdf` → PDF; `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`,

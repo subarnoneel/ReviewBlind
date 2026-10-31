@@ -4,9 +4,9 @@
 [examples/.reviewblind.example.toml](../examples/.reviewblind.example.toml).
 
 > **This file lists your identities in plain text.** Do not include it in the artifact
-> you share. `init` adds it to `.git/info/exclude`, and a scan reports RB805 if it is
-> tracked or would be packaged. You can also keep it outside the repository and pass
-> `--config`.
+> you share. `init` adds it to `.git/info/exclude`. A scan reports RB805 as a BLOCKER if the file
+> is tracked, would be packaged, or is in a folder outside Git, where tracking cannot be known.
+> You can also keep it outside the repository and pass `--config`.
 
 ## Example
 

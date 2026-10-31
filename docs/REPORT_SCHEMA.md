@@ -85,7 +85,7 @@ support.
 | Field | Type | Notes |
 |---|---|---|
 | `schema_version` | integer | `1` |
-| `tool.name` | string | Always `reviewblind`. This is the report marker that RB805 looks for, together with `schema_version` |
+| `tool.name` | string | Always `reviewblind`. RB805 recognizes a saved report by `schema_version` followed by this |
 | `target` | enum | `mirror`, `archive`, `repository` |
 | `root` | string | Scan root; shown as `~/...` when under the home directory |
 | `config_path` | string | Config used. Relative to the root when inside it |
@@ -159,4 +159,5 @@ See [examples/sample-report.md](../examples/sample-report.md).
 ## Terminal
 
 The layout is shown in [CLI.md](CLI.md#reviewblind-scan-path). Rich markup is disabled for
-repository-controlled text.
+repository-controlled text. RB805 recognizes a saved terminal report by its first two lines, including one
+saved as UTF-16 by Windows PowerShell's `>` operator.

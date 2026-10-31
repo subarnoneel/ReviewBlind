@@ -319,7 +319,7 @@ def test_an_affiliation_in_a_file_name_is_a_warning(tmp_path: Path) -> None:
 def test_binary_files_still_have_their_names_checked(tmp_path: Path) -> None:
     write_tree(tmp_path, {"aliceexample.bin": b"\x00\x01"})
     report = scan(tmp_path)
-    assert rules_found(report.result.findings) == ["RB106"]
+    assert rules_found(report.result.findings) == ["RB106", "RB803"]
 
 
 # Encodings and limits
@@ -449,7 +449,7 @@ def test_two_scans_are_identical(tmp_path: Path) -> None:
 def test_the_active_config_is_not_scanned_as_text(tmp_path: Path) -> None:
     write_tree(tmp_path, {".reviewblind.toml": 'names = ["Alice Example"]\n', "a.txt": "ok\n"})
     report = engine.run_scan(tmp_path, PERSONA, Target.MIRROR, tmp_path / ".reviewblind.toml")
-    assert report.result.findings == []
+    assert rules_found(report.result.findings) == ["RB805"]
     assert not report.result.incomplete
 
 

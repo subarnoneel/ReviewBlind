@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -12,8 +10,8 @@ from typing import Any
 
 from reviewblind.models import Confidence, Identity, IdentityKind
 from reviewblind.rules.registry import is_known_rule
+from reviewblind.utils.files import CONFIG_FILE_NAME, atomic_write
 
-CONFIG_FILE_NAME = ".reviewblind.toml"
 CONFIG_VERSION = 1
 MAX_CONFIG_BYTES = 1024 * 1024
 DEFAULT_MAX_TEXT_BYTES = 8 * 1024 * 1024
@@ -287,16 +285,7 @@ def write_config(config: Config, path: Path, *, force: bool = False) -> None:
         raise ConfigError(f"refusing to write through a symbolic link: {path}")
     if path.exists() and not force:
         raise ConfigError(f"{path} already exists. Use --force to overwrite it")
-    content = dumps_config(config).encode("utf-8")
     try:
-        # Replacing from a temporary file swaps the directory entry rather than following it.
-        descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.")
-        try:
-            with os.fdopen(descriptor, "wb") as file:
-                file.write(content)
-            Path(temporary).replace(path)
-        except BaseException:
-            Path(temporary).unlink(missing_ok=True)
-            raise
+        atomic_write(path, dumps_config(config).encode("utf-8"))
     except OSError as error:
         raise ConfigError(f"cannot write {path}: {error.strerror or error}") from error

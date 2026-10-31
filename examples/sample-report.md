@@ -28,7 +28,7 @@
 
 ## Blockers
 
-### RB101 — Confirmed name in reviewer-visible text
+### RB101 - Confirmed name in reviewer-visible text
 
 - **Location:** `README.md:42:12`
 - **Confidence:** HIGH
@@ -37,7 +37,7 @@
 - **Suggested action:** Remove this name from the review artifact or configure your anonymous mirror to replace it.
 - **Fingerprint:** `rb1:0000000000000000000000000000000000000000000000000000000000000001`
 
-### RB301 — Author/maintainer metadata
+### RB301 - Author/maintainer metadata
 
 - **Location:** `pyproject.toml:8`
 - **Confidence:** HIGH
@@ -46,7 +46,7 @@
 - **Suggested action:** Replace it with a neutral value such as `Anonymous Authors`.
 - **Fingerprint:** `rb1:0000000000000000000000000000000000000000000000000000000000000002`
 
-### RB601 — Identity in PDF metadata
+### RB601 - Identity in PDF metadata
 
 - **Location:** `figures/architecture.pdf`, `PDF metadata: Author`
 - **Confidence:** HIGH
@@ -57,7 +57,7 @@
 
 ## Warnings
 
-### RB502 — Identity in notebook output/traceback
+### RB502 - Identity in notebook output/traceback
 
 - **Location:** `notebooks/error_analysis.ipynb`, `output[7].traceback[3]`
 - **Confidence:** HIGH
@@ -68,7 +68,7 @@
 
 ## Review
 
-### RB703 — Visual content requires manual review
+### RB703 - Visual content requires manual review
 
 - **Location:** `figures/team-photo.png`
 - **Confidence:** HIGH
@@ -79,7 +79,7 @@
 
 ## Info
 
-### RB402 — Identifying Git author/committer
+### RB402 - Identifying Git author/committer
 
 - **Location:** Git history, commit `a1b2c3d`
 - **Confidence:** HIGH

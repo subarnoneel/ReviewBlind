@@ -82,6 +82,7 @@ class ArtifactKind(Enum):
     IMAGE = "IMAGE"
     ARCHIVE = "ARCHIVE"
     BINARY = "BINARY"
+    REVIEWBLIND = "REVIEWBLIND"  # our own config or report: it is reported, never scanned as text
 
 
 class EvidenceClass(Enum):

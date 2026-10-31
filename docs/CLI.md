@@ -1,6 +1,6 @@
 # CLI Reference
 
-> Status: `scan` works with `--target`, `--config`, `--fail-on` and `--strict`, and `rules` works.
+> Status: `scan` and `rules` work, except for `--max-commits`, which needs the Git scanner.
 > The other commands and flags here are the planned 0.1.0 interface.
 
 Examples use the fictional researcher **Dr. Alice Example** of Example University.

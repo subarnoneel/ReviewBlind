@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
+from dataclasses import replace
 from pathlib import Path
 
 from reviewblind import __version__
-from reviewblind.config import Config
-from reviewblind.inventory import Inventory, build_inventory
+from reviewblind.config import AllowEntry, Config
+from reviewblind.inventory import build_inventory
 from reviewblind.matching import IdentityMatcher, resolve_overlaps
 from reviewblind.models import (
     Artifact,
@@ -19,6 +20,7 @@ from reviewblind.models import (
     ScanResult,
     Severity,
     SkipReason,
+    SuppressedFinding,
     Target,
     Verdict,
 )
@@ -26,12 +28,9 @@ from reviewblind.profiles import build_finding
 from reviewblind.scanners import CONTENT_SCANNERS, PATH_SCANNER, REPOSITORY_SCANNERS
 from reviewblind.scanners.base import FileScanner, RepositoryScanner, ScanContext
 from reviewblind.signals import SignalMatcher
+from reviewblind.utils.text import comparison_key
 
 MAX_FINDINGS_PER_ARTIFACT = 1000
-
-_NO_SCANNER_REASON = {
-    ArtifactKind.ARCHIVE: SkipReason.ARCHIVE_NOT_INSPECTED,
-}
 
 
 def _run_file_scanner(
@@ -106,23 +105,57 @@ def _sort_key(finding: Finding) -> tuple[int, str, int, int, str, str]:
     )
 
 
+class _Allowlist:
+    """Exact suppressions. A broad pattern could silently hide a different leak (FR-CFG-4)."""
+
+    def __init__(self, entries: Iterable[AllowEntry]) -> None:
+        self._entries = {
+            (entry.rule, entry.path, comparison_key(entry.value)): entry for entry in entries
+        }
+        self._used: set[tuple[str, str, str]] = set()
+        self.suppressed: list[SuppressedFinding] = []
+
+    def keep(self, findings: Iterable[Finding]) -> list[Finding]:
+        """Return the findings that stand, and remember the rest for the report."""
+        kept = []
+        for finding in findings:
+            key = (finding.rule_id, finding.artifact, comparison_key(finding.matched))
+            entry = self._entries.get(key)
+            if entry is None:
+                kept.append(finding)
+            else:
+                self._used.add(key)
+                self.suppressed.append(SuppressedFinding(finding, entry.reason))
+        return kept
+
+    def stale_notes(self) -> list[str]:
+        stale = sorted(key for key in self._entries if key not in self._used)
+        return [
+            f"An [[allow]] entry matched nothing, so it may be out of date: {rule} in {path}"
+            for rule, path, _value in stale
+        ]
+
+
 def _scan_artifact(
-    artifact: Artifact, context: ScanContext, inventory: Inventory, config_relpath: str | None
+    artifact: Artifact, context: ScanContext, allowlist: _Allowlist
 ) -> list[Finding]:
     detections = _run_file_scanner(PATH_SCANNER, artifact, context)
     scanners = [scanner for scanner in CONTENT_SCANNERS if scanner.supports(artifact)]
-    if artifact.relpath == config_relpath:
-        scanners = []  # it lists every identity by design, so its contents would be pure noise
-    elif not scanners:
+    if not scanners:
         context.report_skip(
             artifact.relpath,
-            _NO_SCANNER_REASON.get(artifact.kind, SkipReason.UNSUPPORTED_BINARY),
+            SkipReason.UNSUPPORTED_BINARY,
             f"{artifact.kind.value.lower()} files are not inspected by this version",
         )
     for scanner in scanners:
         detections.extend(_run_file_scanner(scanner, artifact, context))
-    findings = _build_findings(
-        detections, context.target, git_packaged=inventory.git_packaged, tracked=artifact.tracked
+    findings = allowlist.keep(
+        _build_findings(
+            detections,
+            context.target,
+            git_packaged=context.inventory.git_packaged,
+            tracked=artifact.tracked,
+        )
     )
     findings.sort(key=_sort_key)
     if len(findings) > MAX_FINDINGS_PER_ARTIFACT:
@@ -151,6 +184,19 @@ def _deduplicate(findings: Iterable[Finding]) -> list[Finding]:
     return list(unique.values())
 
 
+def _deduplicate_suppressed(items: Iterable[SuppressedFinding]) -> list[SuppressedFinding]:
+    unique = {
+        (
+            item.finding.rule_id,
+            item.finding.artifact,
+            item.finding.location,
+            item.finding.matched,
+        ): item
+        for item in items
+    }
+    return sorted(unique.values(), key=lambda item: _sort_key(item.finding))
+
+
 def run_scan(
     root: Path, config: Config, target: Target, config_path: Path | None = None
 ) -> ScanReport:
@@ -163,19 +209,26 @@ def run_scan(
         target=target,
         matcher=IdentityMatcher(identities),
         signals=SignalMatcher(identities),
+        inventory=inventory,
     )
     config_relpath = _relative_config_path(root, config_path)
+    allowlist = _Allowlist(config.allow)
 
     findings: list[Finding] = []
     for artifact in inventory.artifacts:
-        findings.extend(_scan_artifact(artifact, context, inventory, config_relpath))
+        if artifact.relpath == config_relpath:
+            # Whatever it is called, the active config lists every identity by design.
+            artifact = replace(artifact, kind=ArtifactKind.REVIEWBLIND)
+        findings.extend(_scan_artifact(artifact, context, allowlist))
     for scanner in REPOSITORY_SCANNERS:
         findings.extend(
-            _build_findings(
-                _run_repository_scanner(scanner, context),
-                target,
-                git_packaged=inventory.git_packaged,
-                tracked=None,
+            allowlist.keep(
+                _build_findings(
+                    _run_repository_scanner(scanner, context),
+                    target,
+                    git_packaged=inventory.git_packaged,
+                    tracked=None,
+                )
             )
         )
 
@@ -186,10 +239,11 @@ def run_scan(
     skipped_paths = {item.path for item in skipped}
     result = ScanResult(
         findings=sorted(_deduplicate(findings), key=_sort_key),
+        suppressed=_deduplicate_suppressed(allowlist.suppressed),
         inspected=sum(1 for item in inventory.artifacts if item.relpath not in skipped_paths),
         excluded=inventory.excluded,
         skipped=list(skipped),
-        notes=list(inventory.notes),
+        notes=[*inventory.notes, *allowlist.stale_notes()],
         incomplete=bool(skipped),
     )
     return ScanReport(
