@@ -346,3 +346,53 @@ each rule's unconfirmed policy already determine both cases.
 
 **Decision:** the field is removed, so `profiles.py` alone decides severity and confidence, as D-06 intends.
 `Rule` gains the flags needed to express the catalogue as data.
+
+### D-43: The hardened Git runner moved from M4 to M2
+
+**Issue:** the `mirror` target needs Git's list of tracked files, which the first scan requires, but the runner
+was planned for M4, and running Git any other way is forbidden.
+
+**Decision:** the runner and its attack tests are part of M2. M4 adds only the commands the Git scanner needs.
+
+### D-44: Git is found without searching the current directory
+
+**Issue:** `subprocess` and `shutil.which` on Windows look in the current directory first. Running `reviewblind
+scan .` in a hostile repository could run the repository's own `git.exe`, breaking the promise never to execute
+repository code.
+
+**Decision:** only absolute `PATH` entries outside the scan root are searched. See threat T-15.
+
+### D-45: Per-file limits on matches
+
+**Issue:** a file repeating a name 100,000 times gains nothing from 100,000 report entries, and a hostile file
+could exhaust memory. But silently dropping findings could hide a BLOCKER.
+
+**Decision:** at most 5,000 matches are examined and the 1,000 most severe findings are listed per file. Passing
+either limit adds a `TOO_MANY_MATCHES` skip, which marks the scan incomplete.
+
+### D-46: Files without a scanner yet are reported as skipped
+
+**Issue:** notebooks, PDFs and images get scanners in M6, and packaging rules arrive in M3. Until then, a scan that
+ignored them would claim more than it inspected.
+
+**Decision:** each is recorded as skipped, which marks the scan incomplete. Their names are still checked.
+
+### D-47: A directory name is reported once
+
+**Issue:** a directory named after an author would raise RB106 once for every file inside it.
+
+**Decision:** RB106 is reported against the path up to the matched component, and identical findings are merged.
+
+### D-48: `--strict` arrived early
+
+**Issue:** M3 was to add `--strict`, but incomplete scans already exist in M2, and the flag is one line.
+
+**Decision:** added in M2, with exit code 3.
+
+### D-49: Tool output uses ASCII punctuation
+
+**Issue:** box-drawing characters and em dashes in the tool's own text become escape sequences on consoles using
+a legacy code page, such as Windows cp1252.
+
+**Decision:** the tool's own text is ASCII. Repository text keeps its real characters, and characters the console
+cannot show are escaped rather than crashing the report.

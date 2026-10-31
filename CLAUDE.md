@@ -3,7 +3,7 @@
 Deterministic, local-first CLI that preflights research repositories for identity leaks before
 double-anonymous review. Python 3.11+, src layout.
 
-**Status:** foundation only. Follow the milestones in `docs/ROADMAP.md`, in order.
+**Status:** under development. Follow the milestones in `docs/ROADMAP.md`, in order.
 
 ## Where things are decided
 

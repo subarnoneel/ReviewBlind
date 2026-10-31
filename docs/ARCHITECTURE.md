@@ -1,6 +1,6 @@
 # Architecture
 
-> Status: this is the design for 0.1.0. Implementation has not started.
+> Status: this is the design for 0.1.0. [ROADMAP.md](ROADMAP.md) shows what is built so far.
 
 ## 1. Overview
 
@@ -83,7 +83,8 @@ reviewblind/
 │   ├── models.py           Dataclasses and enums
 │   ├── profiles.py         Severity resolution for rule + target + evidence
 │   ├── fingerprints.py     Stable finding fingerprints
-│   ├── matching.py         Normalization, identity and structural matching
+│   ├── matching.py         Identity matching and overlap resolution
+│   ├── signals.py          Structural signals: home paths, namespaces, hostnames, schedulers
 │   ├── discovery/          git.py, manifests.py, latex.py
 │   ├── scanners/           base.py, text.py, paths.py, manifests.py, git.py,
 │   │                       notebook.py, pdf.py, image.py, packaging.py
@@ -293,7 +294,11 @@ changed when it is not. The only consequence is an unnecessary note.
 
 A symlink is never followed by default. It is recorded as skipped, which marks the scan
 incomplete. With `follow_symlinks = true`, a link is followed only when its resolved path
-stays inside the root; a link that leaves the root is always skipped.
+stays inside the root; a link that leaves the root is always skipped. Every directory is also checked by its
+resolved path, because a Windows junction reports as an ordinary directory.
+
+Anything that is not a regular file, such as a named pipe, is skipped without being opened, since reading a pipe
+would hang the scan forever.
 
 ## 6. Matching
 
@@ -330,10 +335,20 @@ both survive, because each may be a separate leak.
 Manifest files are read by both `TextScanner` and `ManifestScanner`. On the same line and
 value, the RB3xx finding wins, as it is more specific.
 
+**Structural signals.** `signals.py` finds home paths, service namespaces, institutional hostnames and
+scheduler directives, and reports each as a `Signal` with no rule attached. Each scanner maps signals to its
+own rules, so notebooks can reuse them with RB501-RB503. A namespace counts as confirmed when it equals a
+confirmed username or contains one at a word boundary, as in `wandb.ai/aliceexample-lab`. Otherwise the longer
+signal, at lower severity, would hide a username that is a BLOCKER by itself.
+
 **Performance and safety.** Each identity is searched for separately, as escaped literals joined by
 `\s+`, so a longer identity failing its boundary check cannot hide a shorter one at the same
-position. Structural detectors must be linear-time: no nested quantifiers, and they run
-per line with a line-length cap.
+position. Structural patterns must be linear-time: each begins with a literal or a fixed-width check and has no
+nested quantifiers, which a test checks at scale on hostile input.
+
+**Limits.** A file is examined for at most 5,000 matches, and at most its 1,000 most severe findings are listed.
+Passing either limit adds a `TOO_MANY_MATCHES` skip, so the scan is reported as incomplete rather than silently
+hiding the rest.
 
 ## 7. Fingerprints
 
@@ -373,8 +388,13 @@ The child environment has every inherited `GIT_*` variable removed, then sets
 `GIT_TERMINAL_PROMPT=0` and `GIT_OPTIONAL_LOCKS=0`. Stdin is closed, and each command has a
 timeout. Calls never use a shell.
 
-**Allowlisted subcommands:** `rev-parse`, `ls-files --cached --others --exclude-standard`,
-`ls-files -s`, `log`, `rev-list`, `remote -v`.
+The executable itself is found by searching absolute `PATH` entries outside the scan root, and is run by
+absolute path. Windows otherwise searches the current directory first, so a repository could run its own
+`git.exe` simply by being scanned.
+
+**Allowlisted commands**, matched exactly: `rev-parse --is-inside-work-tree`, `ls-files --cached -z`,
+`ls-files --others --exclude-standard -z` and `ls-files -s -z`. Milestone M4 adds `log`, `rev-list` and
+`remote -v` for the Git scanner, each with its own attack test.
 
 **Banned, verified by test:** `status`, `diff`, `ls-files --modified`, `fetch`, `pull`,
 `ls-remote`, `submodule`, `checkout`.

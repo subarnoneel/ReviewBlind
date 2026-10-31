@@ -151,7 +151,7 @@ Rule assignments are in [RULES.md](RULES.md).
 | ID | Requirement |
 |---|---|
 | FR-COMP-1 | MUST record every artifact that could not be fully inspected, with a reason |
-| FR-COMP-2 | MUST mark the scan incomplete for: an unreadable, corrupt or encrypted file; a file over a size cap; an unsupported binary; an uninspected archive; a symlink that was not followed; truncated Git history; or unavailable Git |
+| FR-COMP-2 | MUST mark the scan incomplete for: an unreadable, corrupt or encrypted file; a file over a size cap; an unsupported binary; an uninspected archive; a symlink that was not followed; a submodule or nested repository; more matches in one file than the limit; truncated Git history; or unavailable Git |
 | FR-COMP-3 | MUST NOT mark the scan incomplete solely because image pixels or embedded notebook images were not inspected. These are REVIEW findings |
 | FR-COMP-4 | MUST always show the completeness state in every report format |
 

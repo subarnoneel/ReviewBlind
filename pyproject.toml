@@ -40,9 +40,8 @@ Repository = "https://github.com/subarnoneel/ReviewBlind"
 Issues = "https://github.com/subarnoneel/ReviewBlind/issues"
 Changelog = "https://github.com/subarnoneel/ReviewBlind/blob/main/CHANGELOG.md"
 
-# Enabled at milestone M2, when cli.py exists (docs/DECISIONS.md, D-36).
-# [project.scripts]
-# reviewblind = "reviewblind.cli:app"
+[project.scripts]
+reviewblind = "reviewblind.cli:main"
 
 [dependency-groups]
 dev = [

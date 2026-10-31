@@ -1,6 +1,7 @@
 # CLI Reference
 
-> Status: this is the planned 0.1.0 interface. Nothing here is implemented yet.
+> Status: `scan` works with `--target`, `--config`, `--fail-on` and `--strict`, and `rules` works.
+> The other commands and flags here are the planned 0.1.0 interface.
 
 Examples use the fictional researcher **Dr. Alice Example** of Example University.
 
@@ -141,6 +142,7 @@ Root: ~/research/my-paper
 
 Identities: 5 confirmed
 Files inspected: 137
+Files excluded: 12
 Files skipped: 2
 Scan complete: NO
 
@@ -148,7 +150,7 @@ BLOCKER  RB101  HIGH
 README.md:42:12
 
 Found confirmed author name:
-"Alice Example"
+Maintained by Alice Example at the lab
 
 Reason:
 Direct author identity is visible in reviewer-facing text.
@@ -162,6 +164,7 @@ WARNING  RB502  HIGH
 notebooks/error_analysis.ipynb
 output[7].traceback[3]
 
+Found a personal home path:
 /home/aliceexample/miniconda3/envs/nlp/...
 
 Reason:
@@ -185,7 +188,7 @@ unsupported binary format
 
 Use --strict to treat incomplete scanning as CI failure.
 
-────────────────────────────────────
+------------------------------------
 
 BLOCKERS    1
 WARNINGS    1
@@ -242,7 +245,7 @@ metadata, image metadata or embedded images.
 ```text
 $ reviewblind rules RB502
 
-RB502 — Identity in notebook output/traceback
+RB502 - Identity in notebook output/traceback
 
 Severity:
   mirror      BLOCKER
@@ -286,7 +289,7 @@ automation; the verdict is for people.
 | Any BLOCKER | `RESULT: NOT READY FOR ANONYMOUS REVIEW` |
 | No BLOCKER; any WARNING or REVIEW | `RESULT: MANUAL REVIEW REQUIRED` |
 | Only INFO or nothing; scan complete | `RESULT: NO KNOWN LEAKS DETECTED` |
-| Only INFO or nothing; scan incomplete | `RESULT: NO KNOWN LEAKS DETECTED — SCAN INCOMPLETE` |
+| Only INFO or nothing; scan incomplete | `RESULT: NO KNOWN LEAKS DETECTED - SCAN INCOMPLETE` |
 
 ReviewBlind never prints "clean", "anonymous" or "compliant".
 

@@ -105,7 +105,30 @@ class SkipReason(Enum):
     SYMLINK_NOT_FOLLOWED = "SYMLINK_NOT_FOLLOWED"
     GIT_UNAVAILABLE = "GIT_UNAVAILABLE"
     GIT_TRUNCATED = "GIT_TRUNCATED"
+    SUBMODULE_NOT_INSPECTED = "SUBMODULE_NOT_INSPECTED"
+    TOO_MANY_MATCHES = "TOO_MANY_MATCHES"
     SCANNER_ERROR = "SCANNER_ERROR"
+
+
+class Verdict(Enum):
+    """What the findings mean for a person. Never claims an artifact is anonymous."""
+
+    NOT_READY = "NOT_READY"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+    NO_KNOWN_LEAKS = "NO_KNOWN_LEAKS"
+    NO_KNOWN_LEAKS_INCOMPLETE = "NO_KNOWN_LEAKS_INCOMPLETE"
+
+    @property
+    def line(self) -> str:
+        return _VERDICT_LINES[self]
+
+
+_VERDICT_LINES = {
+    Verdict.NOT_READY: "NOT READY FOR ANONYMOUS REVIEW",
+    Verdict.REVIEW_REQUIRED: "MANUAL REVIEW REQUIRED",
+    Verdict.NO_KNOWN_LEAKS: "NO KNOWN LEAKS DETECTED",
+    Verdict.NO_KNOWN_LEAKS_INCOMPLETE: "NO KNOWN LEAKS DETECTED - SCAN INCOMPLETE",
+}
 
 
 @dataclass(frozen=True)
@@ -189,6 +212,18 @@ class ScanResult:
     skipped: list[SkippedArtifact] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     incomplete: bool = False
+
+
+@dataclass(frozen=True)
+class ScanReport:
+    """A finished scan, with the context a reporter needs."""
+
+    result: ScanResult
+    target: Target
+    root: Path
+    config_path: Path | None
+    identities: tuple[Identity, ...]
+    version: str
 
 
 @dataclass(frozen=True)

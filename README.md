@@ -3,9 +3,9 @@
 **A deterministic, local-first CLI that preflights research repositories for accidental
 identity disclosure before double-anonymous peer review.**
 
-> **Status: pre-alpha.** The specification is complete, but the tool is not implemented yet.
-> The commands below show the planned 0.1.0 interface and do not work today. Progress is
-> tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha, and not ready for real submissions.** `reviewblind scan` and `reviewblind rules` work on
+> text files and file names. Notebooks, PDFs, images and Git history are not inspected yet, and are reported as
+> skipped. The other commands below are planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 

@@ -154,6 +154,31 @@ def line_and_column(starts: list[int], offset: int) -> tuple[int, int]:
     return line, offset - starts[line - 1] + 1
 
 
+def excerpt(text: str, start: int, end: int) -> str:
+    """The line around a match, cut to the evidence limit with the match kept in view.
+
+    Searching is bounded, so thousands of matches on one huge line stay cheap.
+    """
+    floor = max(0, start - EVIDENCE_LIMIT)
+    ceiling = min(len(text), end + EVIDENCE_LIMIT)
+    line_start = max(text.rfind("\n", floor, start), text.rfind("\r", floor, start))
+    line_start = floor if line_start == -1 else line_start + 1
+    breaks = [
+        index
+        for index in (text.find("\n", end, ceiling), text.find("\r", end, ceiling))
+        if index != -1
+    ]
+    line_end = min(breaks, default=ceiling)
+    if line_end - line_start <= EVIDENCE_LIMIT:
+        return text[line_start:line_end].strip()
+    margin = max(0, (EVIDENCE_LIMIT - 2 - (end - start)) // 2)
+    window_start = max(line_start, start - margin)
+    window_end = min(line_end, end + margin)
+    before = "\u2026" if window_start > line_start else ""
+    after = "\u2026" if window_end < line_end else ""
+    return f"{before}{text[window_start:window_end]}{after}"
+
+
 def sanitize_text(text: str) -> str:
     """Make repository-controlled text safe to display on one line.
 
