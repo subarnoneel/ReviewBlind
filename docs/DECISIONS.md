@@ -306,3 +306,16 @@ Hido lets reviewers `git clone`, and its public documentation does not say what 
 **Decision:** keep INFO, as specified. This is an assumption about third-party services that ReviewBlind
 cannot check, so [LIMITATIONS.md](LIMITATIONS.md#mirror-workflows) tells authors to verify it themselves.
 Milestone M7 checks what a Hido clone contains. If it includes author history, this decision is reopened.
+
+### D-39: PyMuPDF crashes on macOS when warnings are errors
+
+**Issue:** on macOS, importing PyMuPDF raises three SWIG `DeprecationWarning`s from native code while its
+extension module loads. When warnings are errors, the process segfaults instead of raising an exception, so
+it cannot be caught. CI diagnostics on October 31, 2026 showed that `python -W error -c "import pymupdf"`
+crashes on Python 3.11 and 3.14, that pytest passes once warnings are not errors, and that pytest on PyMuPDF
+1.27.2.3 crashes too, so the 1.x pin is not the cause. The warnings do not appear on Windows.
+
+**Decision:**
+- Pytest keeps treating warnings as errors, but ignores exactly these three messages.
+- `scanners/pdf.py` must import PyMuPDF with `DeprecationWarning` ignored. A user who sets
+  `PYTHONWARNINGS=error` must not get a crash that the engine cannot contain. A Phase 6 test covers this.
