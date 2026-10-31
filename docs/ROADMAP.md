@@ -81,6 +81,8 @@ allowlist handling, and the incomplete-scan state.
 - RB501–RB504, RB601, RB602 and RB701–RB703 fire.
 - The `malformed_repo` fixture completes without a crash.
 - Pixels are never decoded; size caps are enforced before parsing.
+- `python -W error` can import `scanners/pdf.py` without crashing, on macOS too
+  ([D-39](DECISIONS.md#d-39-pymupdf-crashes-on-macos-when-warnings-are-errors)).
 
 ## M7 — Export and benchmark
 
