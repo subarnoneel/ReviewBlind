@@ -26,6 +26,7 @@ class Inventory:
     git_present: bool  # a .git directory or file at the scan root
     git_packaged: bool  # the archive will include it: see RB801
     git_entries: tuple[str, ...]  # every .git in the tree that is not excluded
+    repository: GitRepository | None = None  # None outside Git, or if Git could not read it
 
 
 def compile_excludes(patterns: tuple[str, ...]) -> pathspec.GitIgnoreSpec:
@@ -221,4 +222,5 @@ def build_inventory(root: Path, target: Target, settings: ScanSettings) -> Inven
         git_entries=tuple(
             sorted(entry for entry in git_entries if not excludes.match_file(f"{entry}/config"))
         ),
+        repository=repository,
     )

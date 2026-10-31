@@ -10,6 +10,7 @@ import ast
 import hashlib
 import os
 import socket
+import sys
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -21,6 +22,7 @@ from _helpers import (
     PERSONA,
     findings,
     git,
+    git_input,
     init_repo,
     rules_found,
     scan,
@@ -30,14 +32,16 @@ from _helpers import (
 from reviewblind.config import ScanSettings
 from reviewblind.matching import IdentityMatcher
 from reviewblind.models import SkipReason, Target
-from reviewblind.scanners import text as text_scanner
+from reviewblind.scanners import base as scanner_base
 from reviewblind.signals import SignalMatcher
+from reviewblind.utils import git as git_module
 from reviewblind.utils.git import (
     ALLOWED_COMMANDS,
     ForbiddenGitCommandError,
     GitError,
     GitRepository,
     find_git,
+    is_allowed_command,
     open_repository,
 )
 
@@ -161,8 +165,174 @@ def test_commands_that_can_run_repository_code_are_rejected(
 
 def test_the_allowlist_contains_only_reviewed_commands() -> None:
     # Adding to this set needs a test showing the command cannot run repository-defined code.
-    assert {command[0] for command in ALLOWED_COMMANDS} == {"rev-parse", "ls-files"}
+    assert {command[0] for command in ALLOWED_COMMANDS} == {
+        "rev-parse",
+        "ls-files",
+        "remote",
+        "rev-list",
+    }
     assert not any("--modified" in command or "-m" in command for command in ALLOWED_COMMANDS)
+
+
+# T-02: code execution through `git log`
+
+
+def _signed_commit(root: Path) -> None:
+    """Add a commit with a signature header, which is all that `git log` needs to verify one."""
+    tree = git(root, "rev-parse", "HEAD^{tree}").strip()
+    body = (
+        f"tree {tree}\n"
+        "author Fixture <fixture@example.org> 1700000000 +0000\n"
+        "committer Fixture <fixture@example.org> 1700000000 +0000\n"
+        "gpgsig -----BEGIN PGP SIGNATURE-----\n"
+        " \n"
+        " abcdef\n"
+        " -----END PGP SIGNATURE-----\n"
+        "\n"
+        "Signed commit\n"
+    )
+    object_id = git_input(root, body, "hash-object", "-t", "commit", "-w", "--stdin").strip()
+    git(root, "update-ref", "HEAD", object_id)
+
+
+def _hostile_gpg(root: Path, marker: Path) -> None:
+    program = root.parent / "evil-gpg"
+    write_tree(root.parent, {"evil-gpg": f"#!/bin/sh\necho ran >> '{marker.as_posix()}'\n"})
+    program.chmod(0o755)
+    git(root, "config", "gpg.program", program.as_posix())
+    git(root, "config", "log.showSignature", "true")
+
+
+def test_the_signature_attack_is_real_and_is_stopped(tmp_path: Path) -> None:
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n"})
+    marker = tmp_path / "marker"
+    _signed_commit(root)
+    _hostile_gpg(root, marker)
+
+    git(root, "log", "-1", "--format=%H")
+    assert fired(marker), "control failed: plain git log did not run gpg.program"
+
+    marker.unlink()
+    for target in ALL_TARGETS:
+        report = scan(root, target)
+        assert not report.result.incomplete
+    assert not fired(marker)
+    # The signed commit was still read, so nothing was skipped to achieve this.
+    assert "RB402" in rules_found(scan(root, Target.REPOSITORY).result.findings)
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["diff.external", "core.pager", "pager.log", "core.sshCommand", "gpg.ssh.program", "alias.log"],
+)
+def test_history_reading_ignores_other_config_commands(tmp_path: Path, key: str) -> None:
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n"})
+    write_tree(root, {"a.txt": "changed\n"})
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "Second")
+    marker = tmp_path / "marker"
+    git(root, "config", key, "!" + marker_command(marker))
+    scan(root, Target.REPOSITORY)
+    assert not fired(marker)
+
+
+def test_a_textconv_driver_does_not_run(tmp_path: Path) -> None:
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n", ".gitattributes": "*.txt diff=x\n"})
+    write_tree(root, {"a.txt": "changed\n"})
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "Second")
+    marker = tmp_path / "marker"
+    git(root, "config", "diff.x.textconv", marker_command(marker))
+    git(root, "config", "diff.x.command", marker_command(marker))
+    scan(root, Target.REPOSITORY)
+    assert not fired(marker)
+
+
+def test_a_partial_clone_cannot_reach_its_remote(tmp_path: Path) -> None:
+    # A promisor remote would otherwise be contacted for missing objects, through any transport.
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n"})
+    marker = tmp_path / "marker"
+    git(root, "config", "core.repositoryformatversion", "1")
+    git(root, "config", "extensions.partialClone", "origin")
+    git(root, "config", "remote.origin.promisor", "true")
+    git(root, "config", "remote.origin.url", "ext::" + marker_command(marker))
+    scan(root, Target.REPOSITORY)
+    assert not fired(marker)
+    environment = git_module._environment()
+    assert environment["GIT_NO_LAZY_FETCH"] == "1"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ("--max-count=5", "--output=stolen.txt"),
+        ("--patch",),
+        ("--max-count=5; rm -rf /",),
+        ("--max-count=-1",),
+        ("--show-signature",),
+    ],
+)
+def test_only_the_exact_log_command_is_allowed(extra: tuple[str, ...]) -> None:
+    base = (
+        "log",
+        "--all",
+        "--no-mailmap",
+        "--no-show-signature",
+        "--no-notes",
+        "--no-patch",
+        git_module._LOG_FORMAT,
+    )
+    assert is_allowed_command((*base, "--max-count=5"))
+    assert not is_allowed_command((*base, *extra))
+    assert not is_allowed_command(("log", *extra))
+
+
+def test_a_hostile_amount_of_git_output_is_contained(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n"})
+    git(root, "commit", "-q", "--allow-empty", "-m", "x" * 5000)
+    monkeypatch.setattr(git_module, "MAX_GIT_OUTPUT_BYTES", 1000)
+    report = scan(root)
+    assert report.result.incomplete
+    assert any(
+        item.reason is SkipReason.GIT_UNAVAILABLE and "too much output" in (item.detail or "")
+        for item in report.result.skipped
+    )
+
+
+def test_hanging_git_is_stopped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = init_repo(tmp_path / "repo", {"a.txt": "hello\n"})
+    monkeypatch.setattr(git_module, "GIT_TIMEOUT_SECONDS", 0)
+    with pytest.raises(GitError, match="timed out"):
+        open_repository(root)
+
+
+# T-01: code execution through Python files
+
+
+@pytest.mark.parametrize("name", ["setup.py", "conftest.py", "__init__.py", "train.py"])
+def test_python_files_are_never_run_or_imported(tmp_path: Path, name: str) -> None:
+    marker = tmp_path / "marker"
+    payload = (
+        "import pathlib\n"
+        f"pathlib.Path({marker.as_posix()!r}).write_text('ran')\n"
+        "from setuptools import setup\n"
+        "setup(author=__import__('os').system('echo ran'))\n"
+    )
+    root = tmp_path / "repo"
+    write_tree(root, {name: payload})
+    for target in ALL_TARGETS:
+        scan(root, target)
+    assert not fired(marker)
+
+
+def test_scanning_does_not_add_the_repository_to_the_import_path(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    write_tree(root, {"setup.py": "setup()\n"})
+    before = list(sys.path)
+    scan(root)
+    assert sys.path == before
 
 
 # T-04: a nested bare repository
@@ -216,7 +386,7 @@ def test_an_oversized_file_is_never_opened(tmp_path: Path, monkeypatch: pytest.M
     def must_not_read(_path: Path, _limit: int) -> bytes:
         raise AssertionError("an oversized file was read")
 
-    monkeypatch.setattr(text_scanner, "read_limited", must_not_read)
+    monkeypatch.setattr(scanner_base, "read_limited", must_not_read)
     config = replace(PERSONA, scan=ScanSettings(max_text_bytes=10, exclude=()))
     report = scan(tmp_path, config=config)
     assert report.result.skipped[0].reason is SkipReason.TOO_LARGE

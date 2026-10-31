@@ -240,7 +240,7 @@ matchers, the inventory, and a `report_skip()` callback for recording incomplete
 | `ImageScanner` | File | IMAGE | RB701–703 |
 | `PackagingScanner` | File | BINARY, ARCHIVE, REVIEWBLIND and OS metadata | RB802–805 |
 | `GitDirectoryScanner` | Repository | Every `.git` in the tree | RB801 |
-| `GitScanner` | Repository | The root | RB401–404 |
+| `GitScanner` | Repository | The repository containing the root | RB401–404 |
 
 The engine wraps every scanner call. A `RecursionError`, `MemoryError` or any other
 `Exception` from a scanner becomes a skipped entry for that artifact, and the scan
@@ -335,8 +335,8 @@ both survive, because each may be a separate leak.
 | `wandb.ai/aliceexample/run` | RB203, RB103 | RB203 (longest) |
 | `--mail-user=alice@example.edu` | RB205, RB102 (same span: the value) | RB102 (higher severity) |
 
-Manifest files are read by both `TextScanner` and `ManifestScanner`. On the same line and
-value, the RB3xx finding wins, as it is more specific.
+Manifest files are read by both `TextScanner` and `ManifestScanner`. When spans tie on length and
+severity, an RB3xx rule beats the lower rule ID, since it says more about the same value.
 
 **Structural signals.** `signals.py` finds home paths, service namespaces, institutional hostnames and
 scheduler directives, and reports each as a `Signal` with no rule attached. Each scanner maps signals to its
@@ -384,20 +384,21 @@ git --no-pager --no-optional-locks --no-replace-objects
     -c core.hooksPath=<null device>
     -c protocol.allow=never
     -c safe.bareRepository=explicit
+    -c i18n.logOutputEncoding=UTF-8
     <allowlisted subcommand>
 ```
 
 The child environment has every inherited `GIT_*` variable removed, then sets
-`GIT_TERMINAL_PROMPT=0` and `GIT_OPTIONAL_LOCKS=0`. Stdin is closed, and each command has a
-timeout. Calls never use a shell.
+`GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0` and `GIT_NO_LAZY_FETCH=1`. Stdin is closed, each command has
+a timeout, and output is capped at 256 MiB, because a commit message can be any size. Calls never use a shell.
 
 The executable itself is found by searching absolute `PATH` entries outside the scan root, and is run by
 absolute path. Windows otherwise searches the current directory first, so a repository could run its own
 `git.exe` simply by being scanned.
 
 **Allowlisted commands**, matched exactly: `rev-parse --is-inside-work-tree`, `ls-files --cached -z`,
-`ls-files --others --exclude-standard -z` and `ls-files -s -z`. Milestone M4 adds `log`, `rev-list` and
-`remote -v` for the Git scanner, each with its own attack test.
+`ls-files --others --exclude-standard -z`, `ls-files -s -z`, `remote -v`, `rev-list --all --count`, and one fixed
+`log` command whose only variable part is `--max-count=<digits>`.
 
 **Banned, verified by test:** `status`, `diff`, `ls-files --modified`, `fetch`, `pull`,
 `ls-remote`, `submodule`, `checkout`.
@@ -412,10 +413,14 @@ The user's own global config still applies, so their `safe.directory` choices ke
 ReviewBlind never adds a `safe.directory` entry. If Git refuses a repository, the Git scan is
 skipped and the scan is marked incomplete, with the message from Git.
 
-**Reading history.** Records are read from `git log --all --no-mailmap` with NUL-separated fields
-using raw `%an`, `%ae`, `%cn`, `%ce` and `%B`, so `.mailmap` cannot hide an identity. Output is
-decoded as UTF-8 with replacement. `git rev-list --all --count` is compared to `--max-commits`
+**Reading history.** Records are read from `git log --all --no-mailmap --no-show-signature --no-notes
+--no-patch` with NUL-separated fields using raw `%an`, `%ae`, `%cn`, `%ce` and `%B`, so `.mailmap` cannot hide an
+identity. Output is decoded as UTF-8 with replacement. `git rev-list --all --count` is compared to `--max-commits`
 to detect truncation.
+
+`--no-show-signature` is a security flag rather than a preference: with `log.showSignature` set, `git log` runs
+whatever program `gpg.program` names on any signed commit. We confirmed this on Git 2.55, and a test keeps proving
+it, with a positive control.
 
 ## 9. Reports
 

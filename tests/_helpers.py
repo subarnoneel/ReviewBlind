@@ -70,6 +70,19 @@ def git(root: Path, *args: str) -> str:
     return completed.stdout
 
 
+def git_input(root: Path, text: str, *args: str) -> str:
+    """Plain Git, with `text` on its standard input."""
+    return subprocess.run(
+        ["git", *args],
+        cwd=root,
+        env=_git_environment(),
+        input=text.encode("utf-8"),  # as bytes, so Windows does not rewrite the line endings
+        capture_output=True,
+        check=True,
+        timeout=60,
+    ).stdout.decode("utf-8")
+
+
 def init_repo(root: Path, files: Mapping[str, str | bytes] | None = None) -> Path:
     """Create a repository with one commit containing `files`."""
     root.mkdir(parents=True, exist_ok=True)

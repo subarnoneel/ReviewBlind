@@ -229,8 +229,8 @@ remain boundaries. Edges in unspaced scripts such as CJK skip the check.
 
 **Issue:** a name in 5,000 commits should not produce 5,000 findings.
 
-**Decision:** RB402 and RB403 report each unique identity once, with the first commit seen. RB404 reports each
-matching commit.
+**Decision:** RB402 and RB403 report each unique identity once, with the first commit seen. RB404 originally
+reported each matching commit, but now also reports each identity once: see D-57.
 
 ### D-26: Reports have no timestamps
 
@@ -440,3 +440,52 @@ only by the owner, then moved into place.
 `--fail-on info` always fails there.
 
 **Decision:** kept as specified. INFO is context, and `--fail-on info` is unusual. The verdict does not change.
+
+### D-56: `git log` needs `--no-show-signature`
+
+**Issue:** the planned hardening flags did not cover signature checking. A repository can set `log.showSignature`
+and `gpg.program` in its own config, and `git log` then runs that program on any signed commit.
+
+**Evidence:** a test with a crafted signed commit shows plain `git log` running it, on all three operating systems.
+
+**Decision:** the allowlisted `log` command passes `--no-show-signature`. It also passes `--no-patch` and `--no-notes`,
+so no diff or text-conversion driver can run, and only `--max-count` can vary.
+
+### D-57: RB404 reports each identity once
+
+**Issue:** D-25 reported every matching commit. A repository with `Signed-off-by` on 2,000 commits would list 2,000
+findings, and passing the per-file limit would mark the scan incomplete, even on `mirror`, where they are only INFO.
+
+**Decision:** each identity is reported once, with the newest commit and a count in the message. Fixing history is
+all-or-nothing, so extra entries add nothing. This matches how a fingerprint identifies a leak rather than a row.
+
+### D-58: Manifest rules win ties
+
+**Issue:** `Alice Example` in a `pyproject.toml` author field raises both RB301 and RB101, with equal span and severity.
+Overlap resolution prefers the lower rule ID, which would report the less specific RB101.
+
+**Decision:** RB3xx rules sort first when span and severity tie.
+
+### D-59: Credentials never reach a report
+
+**Issue:** a remote such as `https://user:token@github.com/...` is common, and RB401 would have copied the token into
+reports, which people may share.
+
+**Decision:** anything before `@` in a URL becomes `***`, other than the usual SSH user `git`. The identity check still
+sees the full URL, so `https://aliceexample@host/...` is still recognized.
+
+### D-60: A cap on Git output
+
+**Issue:** a hostile commit message can be any size, and reading it all could exhaust memory.
+
+**Decision:** reading stops at 256 MiB, and the process is killed. It is reported as `GIT_UNAVAILABLE`, which marks the scan
+incomplete.
+
+### D-61: Placeholders in manifests
+
+**Issue:** FR-MAN-3 flags author fields even when unconfirmed, but `Anonymous Authors`, `[name of copyright owner]` and
+the `Free Software Foundation` line in the GPL's own text say nothing about the authors.
+
+**Decision:** a short list of placeholders is ignored, along with `example.com` addresses and URLs, and any value with
+template brackets. A value matching a confirmed identity is never treated as a placeholder. `example.edu` is not on the
+list, because the test persona uses it.

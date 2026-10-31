@@ -19,6 +19,7 @@ from reviewblind.reporters.json import render_json
 from reviewblind.reporters.markdown import render_markdown
 from reviewblind.reporters.terminal import render_report, render_rule, render_rule_list
 from reviewblind.rules.registry import all_rules, get_rule, is_known_rule
+from reviewblind.scanners.base import DEFAULT_MAX_COMMITS
 from reviewblind.utils.files import atomic_write
 
 EXIT_USAGE = 2
@@ -145,6 +146,9 @@ def scan(
     output: Annotated[
         Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
     ] = None,
+    max_commits: Annotated[
+        int, typer.Option(min=1, help="Newest commits to inspect, from all branches.")
+    ] = DEFAULT_MAX_COMMITS,
 ) -> None:
     """Inspect an artifact and report what could identify its authors."""
     _prepare_streams()
@@ -158,7 +162,9 @@ def scan(
                 f"{config_path} lists no identities, so a scan could not find anything. "
                 "Run `reviewblind init`, or add them by hand."
             )
-        report = run_scan(path.resolve(), loaded, Target[target.name], config_path)
+        report = run_scan(
+            path.resolve(), loaded, Target[target.name], config_path, max_commits=max_commits
+        )
         rendered = _render(report, output_format)
     except typer.Exit:
         raise  # Typer's own exit signal is an Exception, and is not a failure

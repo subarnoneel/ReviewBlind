@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
+import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
 GIT_TIMEOUT_SECONDS = 60
+MAX_GIT_OUTPUT_BYTES = 256 * 1024 * 1024  # a hostile commit message could be any size
 
 _HARDENING = (
     "--no-pager",
@@ -28,7 +32,25 @@ _HARDENING = (
     "protocol.allow=never",
     "-c",
     "safe.bareRepository=explicit",
+    "-c",
+    "i18n.logOutputEncoding=UTF-8",
 )
+
+# Raw names and emails, so that a `.mailmap` cannot hide an identity. The flags turn off what
+# `git log` could otherwise be configured to do: `log.showSignature` with `gpg.program` runs a
+# program chosen by the repository, and patches could run an external diff or textconv driver.
+_LOG_FORMAT = "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x00"
+_LOG_COMMAND = (
+    "log",
+    "--all",
+    "--no-mailmap",
+    "--no-show-signature",
+    "--no-notes",
+    "--no-patch",
+    _LOG_FORMAT,
+)
+_MAX_COUNT = re.compile(r"--max-count=[0-9]+")
+_LOG_FIELDS = 6
 
 ALLOWED_COMMANDS = frozenset(
     {
@@ -36,8 +58,21 @@ ALLOWED_COMMANDS = frozenset(
         ("ls-files", "--cached", "-z"),
         ("ls-files", "--others", "--exclude-standard", "-z"),
         ("ls-files", "-s", "-z"),
+        ("remote", "-v"),
+        ("rev-list", "--all", "--count"),
     }
 )
+
+
+def is_allowed_command(command: tuple[str, ...]) -> bool:
+    """Exact matches only. Every command here has an attack test in tests/test_safety.py."""
+    if command in ALLOWED_COMMANDS:
+        return True
+    return (
+        len(command) == len(_LOG_COMMAND) + 1
+        and command[:-1] == _LOG_COMMAND
+        and _MAX_COUNT.fullmatch(command[-1]) is not None
+    )
 
 
 class GitError(Exception):
@@ -53,6 +88,23 @@ class IndexEntry:
     mode: str
     object_id: str
     path: str
+
+
+@dataclass(frozen=True)
+class Commit:
+    sha: str
+    author_name: str
+    author_email: str
+    committer_name: str
+    committer_email: str
+    message: str
+
+
+@dataclass(frozen=True)
+class _Completed:
+    returncode: int
+    stdout: bytes
+    stderr: bytes
 
 
 def find_git(root: Path) -> str | None:
@@ -83,6 +135,7 @@ def _environment() -> dict[str, str]:
         {
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_NO_LAZY_FETCH": "1",  # a partial clone would otherwise contact its remote
             "LC_ALL": "C",  # error messages are matched below
             "LANGUAGE": "C",
         }
@@ -97,23 +150,45 @@ class GitRepository:
         self._root = root
         self._executable = executable
 
-    def _run(self, *command: str) -> subprocess.CompletedProcess[bytes]:
-        if command not in ALLOWED_COMMANDS:
+    def _run(self, *command: str) -> _Completed:
+        if not is_allowed_command(command):
             raise ForbiddenGitCommandError(" ".join(command))
+        timed_out = threading.Event()
         try:
-            return subprocess.run(  # noqa: S603 - absolute path, no shell, allowlisted arguments
-                [self._executable, *_HARDENING, *command],
-                cwd=self._root,
-                env=_environment(),
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=GIT_TIMEOUT_SECONDS,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as error:
-            raise GitError(f"git {command[0]} timed out") from error
+            with (
+                tempfile.TemporaryFile() as stderr,
+                subprocess.Popen(  # noqa: S603 - absolute path, no shell, allowlisted arguments
+                    [self._executable, *_HARDENING, *command],
+                    cwd=self._root,
+                    env=_environment(),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=stderr,
+                ) as process,
+            ):
+
+                def stop() -> None:
+                    timed_out.set()
+                    process.kill()
+
+                timer = threading.Timer(GIT_TIMEOUT_SECONDS, stop)
+                timer.start()
+                try:
+                    pipe = process.stdout
+                    stdout = pipe.read(MAX_GIT_OUTPUT_BYTES + 1) if pipe is not None else b""
+                    if len(stdout) > MAX_GIT_OUTPUT_BYTES:
+                        process.kill()
+                        raise GitError(f"git {command[0]} produced too much output")
+                    process.wait()
+                finally:
+                    timer.cancel()
+                stderr.seek(0)
+                errors = stderr.read(64 * 1024)
         except OSError as error:
             raise GitError(f"could not run git: {error.strerror or error}") from error
+        if timed_out.is_set():
+            raise GitError(f"git {command[0]} timed out")
+        return _Completed(process.returncode, stdout, errors)
 
     def _output(self, *command: str) -> bytes:
         completed = self._run(*command)
@@ -140,6 +215,36 @@ class GitRepository:
                 mode, object_id, _stage = header.decode("ascii").split(" ")
                 entries.append(IndexEntry(mode, object_id, os.fsdecode(path)))
         return entries
+
+    def remotes(self) -> list[tuple[str, str]]:
+        """Each remote name and URL, once. Reads local config and never contacts a remote."""
+        found: dict[tuple[str, str], None] = {}
+        output = self._output("remote", "-v").decode("utf-8", "replace")
+        for line in output.splitlines():
+            name, _, rest = line.partition("\t")
+            url = rest.rsplit(" (", 1)[0]
+            if name and url:
+                found[(name, url)] = None
+        return list(found)
+
+    def commit_count(self) -> int:
+        return int(self._output("rev-list", "--all", "--count").strip() or b"0")
+
+    def commits(self, limit: int) -> list[Commit]:
+        """Up to `limit` commits from every ref, newest first."""
+        output = self._output(*_LOG_COMMAND, f"--max-count={limit}")
+        fields = output.decode("utf-8", "replace").split("\0")
+        return [
+            Commit(
+                sha=fields[start].strip(),
+                author_name=fields[start + 1],
+                author_email=fields[start + 2],
+                committer_name=fields[start + 3],
+                committer_email=fields[start + 4],
+                message=fields[start + 5],
+            )
+            for start in range(0, len(fields) - _LOG_FIELDS + 1, _LOG_FIELDS)
+        ]
 
 
 def _split_paths(output: bytes) -> list[str]:

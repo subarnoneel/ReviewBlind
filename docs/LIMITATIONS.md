@@ -45,6 +45,13 @@ For `repository` and `archive` with `.git`, these are **not** inspected in 0.1.0
 Forks and repositories with imported history show upstream authors as candidates and
 as unconfirmed findings at the `repository` target.
 
+### Manifests
+
+- `setup.py` is parsed and never run, so a computed value such as `author=get_author()` is not read as
+  metadata. Ordinary text matching still covers the rest of the file.
+- Copyright holders are recognized from common forms, such as `Copyright (c) 2026 Name`. Unusual wording is
+  only caught when it contains a confirmed identity.
+
 ### Formats
 
 - Contents of ZIP, TAR and other archives. They are reported, and mark the scan incomplete.

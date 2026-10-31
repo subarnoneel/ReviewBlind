@@ -19,3 +19,5 @@ All notable changes to this project are documented here. The format is based on
 - JSON and Markdown reports with `--format` and `--output`, byte-identical across runs.
 - Exact `[[allow]]` suppressions, which stay visible in the JSON report.
 - Packaging checks: `.git`, operating-system files, unknown binaries, archives, and ReviewBlind's own config and reports.
+- Git history checks: remotes, authors, committers, emails and commit messages, with `--max-commits`.
+- Manifest checks: `pyproject.toml`, `package.json`, `setup.cfg`, `setup.py`, `CITATION.cff`, and license and authors files.

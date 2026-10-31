@@ -4,8 +4,8 @@
 identity disclosure before double-anonymous peer review.**
 
 > **Status: pre-alpha, and not ready for real submissions.** `reviewblind scan` and `reviewblind rules` work on
-> text files, file names and packaging. Notebooks, PDFs and images are reported as skipped, and Git history is not
-> inspected yet. The other commands below are planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> text files, file names, manifests, Git metadata and packaging. Notebooks, PDFs and images are reported as skipped.
+> The other commands below are planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 
