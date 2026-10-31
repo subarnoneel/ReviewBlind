@@ -101,7 +101,7 @@ Details live in one place and are referenced from here:
 | FR-MATCH-3 | MUST match a multi-word identity across any run of whitespace, including line breaks |
 | FR-MATCH-4 | MUST report line and column positions from the original, unnormalized text |
 | FR-MATCH-5 | MUST NOT use fuzzy or edit-distance matching |
-| FR-MATCH-6 | MUST resolve overlapping matches to one finding: longest span first, then higher severity, then lower rule ID |
+| FR-MATCH-6 | MUST resolve a match contained in another to one finding: longest span first, then higher severity, then lower rule ID. Spans that only partly overlap MUST both be reported |
 | FR-MATCH-7 | MUST treat a short all-caps affiliation or alias as an acronym, with severity and confidence per [RULES.md](RULES.md#evidence-classes) |
 
 ### 4.5 Scanners

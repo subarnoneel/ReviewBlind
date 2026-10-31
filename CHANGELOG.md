@@ -11,3 +11,5 @@ All notable changes to this project are documented here. The format is based on
 - Product, requirements, architecture, threat-model, rule, CLI, config, report, test-plan and
   roadmap documentation.
 - Project scaffolding: packaging, lint, type-check and test configuration; CI; and GitHub templates.
+- Core model: data types, the 33-rule catalogue, severity resolution, identity matching, stable
+  fingerprints, and config reading, validation and writing. Not yet usable from the command line.

@@ -5,11 +5,8 @@ ones, so they should be done in order.
 
 ## M0 — Foundation
 
-**Status: written, not yet pushed.** Specifications, repository scaffolding, CI, and a package that
-builds with one smoke test.
-
-**Remaining:** create the GitHub repository, push the first commit, and see CI pass on Linux, macOS and
-Windows. The workflow has never run, so do this before M1.
+**Status: done.** Specifications, repository scaffolding, CI passing on Linux, macOS and Windows, and a
+package that builds with one smoke test.
 
 ## M1 — Core model
 

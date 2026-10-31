@@ -108,7 +108,8 @@ class Confidence(Enum):     # ordered: HIGH > MEDIUM > LOW
 class Target(Enum):         # MIRROR, ARCHIVE, REPOSITORY
 class IdentityKind(Enum):   # NAME, EMAIL, USERNAME, AFFILIATION, URL, ALIAS
 class ArtifactKind(Enum):   # TEXT, MANIFEST, NOTEBOOK, PDF, IMAGE, ARCHIVE, BINARY
-class EvidenceClass(Enum):  # DIRECT, INDIRECT, AMBIGUOUS
+class EvidenceClass(Enum):  # DIRECT, INDIRECT, ACRONYM, AMBIGUOUS
+class SkipReason(Enum):     # see REPORT_SCHEMA.md
 
 @dataclass(frozen=True)
 class Identity:
@@ -146,7 +147,6 @@ class Detection:
     identity: str | None    # the confirmed identity, if there is one
     evidence_class: EvidenceClass
     span: tuple[int, int] | None = None  # character offsets, for overlap resolution
-    confidence: Confidence | None = None # scanner override for acronyms and weak signals
 
 @dataclass(frozen=True)
 class Finding:
@@ -167,7 +167,7 @@ class Finding:
 @dataclass(frozen=True)
 class SkippedArtifact:
     path: str
-    reason: str             # a SkipReason value, see REPORT_SCHEMA.md
+    reason: SkipReason
     detail: str | None = None
 
 @dataclass(frozen=True)
@@ -194,17 +194,21 @@ class Rule:
     id: str
     title: str
     default_severity: Severity
-    severity_by_target: Mapping[Target, Severity]  # overrides of the default
-    unconfirmed: UnconfirmedPolicy | None  # None: no finding when unconfirmed
-    container: bool  # a ◆ rule, capped by evidence class
     description: str
     reason: str
     remediation: str
+    severity_by_target: Mapping[Target, Severity]  # overrides of the default
+    confidence: Confidence
+    container: bool  # a ◆ rule: INDIRECT evidence is capped at WARNING
+    identity_based: bool  # False for a fact about a file, shown as "n/a" in RULES.md
+    unconfirmed: UnconfirmedPolicy | None  # None: no finding when unconfirmed
+    blocker_if_git_packaged: bool  # the † rules in RULES.md
+    blocker_if_tracked: bool  # the ‡ rule in RULES.md
     applicable_targets: frozenset[Target]
 ```
 
 Scanners emit `Detection`s. `profiles.py` turns each one into a `Finding` by combining the
-catalog with the target. This is the only place severity is decided.
+catalog with the target. This is the only place severity and confidence are decided.
 
 ## 4. Scanner interfaces
 
@@ -312,8 +316,9 @@ the text, including line breaks. This catches `\author{Alice\nExample}`.
 **Not done:** fuzzy matching, edit distance, diacritic folding, name reordering and initials.
 These need aliases. See [LIMITATIONS.md](LIMITATIONS.md).
 
-**Overlaps.** When spans overlap at one location, one finding survives. The order is:
-longest span, then higher severity, then lower rule ID.
+**Overlaps.** When one span lies inside another at the same location, one finding survives. The
+order is: longest span, then higher severity, then lower rule ID. Spans that only partly overlap
+both survive, because each may be a separate leak.
 
 | Text | Candidates | Reported |
 |---|---|---|
@@ -325,8 +330,9 @@ longest span, then higher severity, then lower rule ID.
 Manifest files are read by both `TextScanner` and `ManifestScanner`. On the same line and
 value, the RB3xx finding wins, as it is more specific.
 
-**Performance and safety.** Identity matching uses a single compiled alternation of escaped
-needles. Structural detectors must be linear-time: no nested quantifiers, and they run
+**Performance and safety.** Each identity is searched for separately, as escaped literals joined by
+`\s+`, so a longer identity failing its boundary check cannot hide a shorter one at the same
+position. Structural detectors must be linear-time: no nested quantifiers, and they run
 per line with a line-length cap.
 
 ## 7. Fingerprints

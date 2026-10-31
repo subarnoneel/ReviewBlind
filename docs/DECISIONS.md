@@ -319,3 +319,30 @@ crashes on Python 3.11 and 3.14, that pytest passes once warnings are not errors
 - Pytest keeps treating warnings as errors, but ignores exactly these three messages.
 - `scanners/pdf.py` must import PyMuPDF with `DeprecationWarning` ignored. A user who sets
   `PYTHONWARNINGS=error` must not get a crash that the engine cannot contain. A Phase 6 test covers this.
+
+## Decisions made during implementation
+
+### D-40: Acronyms apply to every rule, and RB404 is a container rule
+
+**Issue:** the spec requires an acronym to be WARNING + MEDIUM or REVIEW + LOW, but `EU` listed under `aliases`
+raises RB101, which is not a container rule, so the three evidence classes could not express it. RB404 also
+describes where something was found, like the other container rules, yet an affiliation in a commit message
+would have been a BLOCKER while the same text in a README is a WARNING.
+
+**Decision:** a fourth class, `ACRONYM`, and both acronym classes apply to every rule. RB404 is marked ◆.
+
+### D-41: Only contained spans are dropped
+
+**Issue:** spec-derived D-19 said one finding survives an overlap. In `Alice Example University`, the name and
+the affiliation overlap on `Example`, and the longer affiliation (a WARNING) would have hidden the name (a
+BLOCKER).
+
+**Decision:** a span is dropped only when it lies entirely inside another. All the examples in D-19 still hold.
+
+### D-42: Scanners do not set confidence
+
+**Issue:** `Detection` had an optional confidence override for acronyms and weak signals, but `EvidenceClass` and
+each rule's unconfirmed policy already determine both cases.
+
+**Decision:** the field is removed, so `profiles.py` alone decides severity and confidence, as D-06 intends.
+`Rule` gains the flags needed to express the catalogue as data.
