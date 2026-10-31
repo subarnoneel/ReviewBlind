@@ -50,13 +50,17 @@ also depends on *what* was found.
 |---|---|---|
 | `DIRECT` | Confirmed name, alias, email, username, profile URL or Git-hosting namespace | The rule's base severity |
 | `INDIRECT` | Affiliation, institutional domain, home path, research-service namespace or HPC identifier | WARNING |
-| `AMBIGUOUS` | An acronym matched in a different case | REVIEW |
 
 **Acronyms.** A confirmed affiliation or alias of at most five characters, all uppercase
-letters, is treated as an acronym:
+letters, is treated as an acronym. Unlike the classes above, this applies to **every** rule,
+not just ◆ rules:
 
-- exact-case match → WARNING + MEDIUM
-- different case → REVIEW + LOW
+| Class | Evidence | Severity | Confidence |
+|---|---|---|---|
+| `ACRONYM` | An acronym matched in its exact case | WARNING | MEDIUM |
+| `AMBIGUOUS` | An acronym matched in a different case | REVIEW | LOW |
+
+Evidence classes only ever lower severity. An INFO finding stays INFO.
 
 ## Catalogue
 
@@ -103,7 +107,7 @@ Severities: **B** = BLOCKER, **W** = WARNING, **R** = REVIEW, **I** = INFO.
 | RB401 | Identifying Git remote | I | I† | B | HIGH | — |
 | RB402 | Identifying Git author/committer | I | I† | B | HIGH | `repository` only: W + MEDIUM |
 | RB403 | Identifying Git email | I | I† | B | HIGH | `repository` only: W + MEDIUM |
-| RB404 | Identity in commit message | I | I† | B | HIGH | — |
+| RB404 ◆ | Identity in commit message | I | I† | B | HIGH | — |
 
 † BLOCKER when a `.git` directory will be packaged.
 
@@ -141,7 +145,7 @@ Severities: **B** = BLOCKER, **W** = WARNING, **R** = REVIEW, **I** = INFO.
 | RB804 | Archive requires manual/deep inspection | R | R | R | HIGH | n/a |
 | RB805 | ReviewBlind config or report in artifact | I‡ | B | I‡ | HIGH | n/a |
 
-‡ BLOCKER when the file is tracked by Git.
+‡ BLOCKER when the file is tracked by Git, or when tracking cannot be determined.
 
 ## Rule details
 
@@ -153,7 +157,7 @@ suggested action shown with a finding.
 **RB101 — Confirmed name in reviewer-visible text**
 - *Detects:* a configured name or alias in any inspected text file.
 - *Why:* direct author identity is visible in reviewer-facing text.
-- *Fix:* remove the name from the review artifact, or configure your anonymous mirror to replace it.
+- *Fix:* remove this name from the review artifact or configure your anonymous mirror to replace it.
 
 **RB102 — Confirmed email**
 - *Detects:* a configured email address.
@@ -243,13 +247,13 @@ suggested action shown with a finding.
 
 **RB403 — Identifying Git email**
 - *Detects:* author and committer emails in history. Each unique address is reported once.
-- *Why:* the same as RB402.
-- *Fix:* the same as RB402.
+- *Why:* full history is public on a repository and is packaged with `.git`.
+- *Fix:* publish a fresh history under a neutral identity. ReviewBlind does not rewrite history.
 
-**RB404 — Identity in commit message**
+**RB404 — Identity in commit message** ◆
 - *Detects:* a confirmed identity in a commit message, including `Signed-off-by` and `Co-authored-by` trailers.
 - *Why:* commit messages travel with the history.
-- *Fix:* the same as RB402.
+- *Fix:* publish a fresh history under a neutral identity. ReviewBlind does not rewrite history.
 
 ### Notebook rules
 
