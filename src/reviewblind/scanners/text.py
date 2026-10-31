@@ -12,9 +12,8 @@ from reviewblind.models import (
     Location,
     SkipReason,
 )
-from reviewblind.scanners.base import MAX_DETECTIONS_PER_ARTIFACT, ScanContext
+from reviewblind.scanners.base import MAX_DETECTIONS_PER_ARTIFACT, ScanContext, read_text_artifact
 from reviewblind.signals import SignalKind
-from reviewblind.utils.files import decode_text, read_limited
 from reviewblind.utils.text import excerpt, line_and_column, line_starts
 
 _IDENTITY_RULES = {
@@ -42,24 +41,8 @@ class TextScanner:
         return artifact.kind in {ArtifactKind.TEXT, ArtifactKind.MANIFEST}
 
     def scan(self, artifact: Artifact, context: ScanContext) -> Iterable[Detection]:
-        limit = context.config.scan.max_text_bytes
-        if artifact.size > limit:
-            context.report_skip(artifact.relpath, SkipReason.TOO_LARGE, f"over {limit} bytes")
-            return ()
-        try:
-            content = read_limited(artifact.path, limit)
-        except OSError as error:
-            context.report_skip(artifact.relpath, SkipReason.UNREADABLE, error.strerror)
-            return ()
-        if content is None:
-            context.report_skip(artifact.relpath, SkipReason.TOO_LARGE, f"over {limit} bytes")
-            return ()
-        try:
-            text = decode_text(content)
-        except UnicodeDecodeError:
-            context.report_skip(
-                artifact.relpath, SkipReason.UNSUPPORTED_BINARY, "not valid UTF-8 text"
-            )
+        text = read_text_artifact(artifact, context)
+        if text is None:
             return ()
         detections = sorted(
             self._detect(artifact.relpath, text, context),

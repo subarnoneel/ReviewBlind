@@ -26,7 +26,12 @@ from reviewblind.models import (
 )
 from reviewblind.profiles import build_finding
 from reviewblind.scanners import CONTENT_SCANNERS, PATH_SCANNER, REPOSITORY_SCANNERS
-from reviewblind.scanners.base import FileScanner, RepositoryScanner, ScanContext
+from reviewblind.scanners.base import (
+    DEFAULT_MAX_COMMITS,
+    FileScanner,
+    RepositoryScanner,
+    ScanContext,
+)
 from reviewblind.signals import SignalMatcher
 from reviewblind.utils.text import comparison_key
 
@@ -55,6 +60,11 @@ def _run_repository_scanner(scanner: RepositoryScanner, context: ScanContext) ->
         return []
 
 
+def _overlap_rule_key(rule_id: str) -> str:
+    # A manifest rule says more than a plain text match of the same value (D-58).
+    return ("0" if rule_id.startswith("RB3") else "1") + rule_id
+
+
 def _resolve_spans(
     pairs: Iterable[tuple[Finding, tuple[int, int] | None, str | None]],
 ) -> list[Finding]:
@@ -71,7 +81,7 @@ def _resolve_spans(
             group,
             span=lambda pair: pair[1],
             severity=lambda pair: pair[0].severity,
-            rule_id=lambda pair: pair[0].rule_id,
+            rule_id=lambda pair: _overlap_rule_key(pair[0].rule_id),
         )
         spanless.extend(finding for finding, _span in kept)
     return spanless
@@ -157,10 +167,15 @@ def _scan_artifact(
             tracked=artifact.tracked,
         )
     )
+    return _within_limit(findings, artifact.relpath, context)
+
+
+def _within_limit(findings: list[Finding], path: str, context: ScanContext) -> list[Finding]:
+    """Keep the most severe findings. Passing the limit is reported, so nothing hides silently."""
     findings.sort(key=_sort_key)
     if len(findings) > MAX_FINDINGS_PER_ARTIFACT:
         context.report_skip(
-            artifact.relpath,
+            path,
             SkipReason.TOO_MANY_MATCHES,
             f"only the {MAX_FINDINGS_PER_ARTIFACT} most severe of {len(findings)} are listed",
         )
@@ -198,7 +213,11 @@ def _deduplicate_suppressed(items: Iterable[SuppressedFinding]) -> list[Suppress
 
 
 def run_scan(
-    root: Path, config: Config, target: Target, config_path: Path | None = None
+    root: Path,
+    config: Config,
+    target: Target,
+    config_path: Path | None = None,
+    max_commits: int = DEFAULT_MAX_COMMITS,
 ) -> ScanReport:
     """Scan a directory. Failures in one artifact are recorded, never raised."""
     identities = config.identity.identities()
@@ -210,6 +229,7 @@ def run_scan(
         matcher=IdentityMatcher(identities),
         signals=SignalMatcher(identities),
         inventory=inventory,
+        max_commits=max_commits,
     )
     config_relpath = _relative_config_path(root, config_path)
     allowlist = _Allowlist(config.allow)
@@ -222,13 +242,17 @@ def run_scan(
         findings.extend(_scan_artifact(artifact, context, allowlist))
     for scanner in REPOSITORY_SCANNERS:
         findings.extend(
-            allowlist.keep(
-                _build_findings(
-                    _run_repository_scanner(scanner, context),
-                    target,
-                    git_packaged=inventory.git_packaged,
-                    tracked=None,
-                )
+            _within_limit(
+                allowlist.keep(
+                    _build_findings(
+                        _run_repository_scanner(scanner, context),
+                        target,
+                        git_packaged=inventory.git_packaged,
+                        tracked=None,
+                    )
+                ),
+                ".git",
+                context,
             )
         )
 
