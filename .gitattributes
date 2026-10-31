@@ -1,0 +1,13 @@
+# Normalize text to LF in the repository and on checkout, on all platforms.
+* text=auto eol=lf
+
+# Fixtures are test data, and their exact bytes matter.
+tests/fixtures/** -text
+
+# Never treat these as text.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.zip binary
+*.gz binary

@@ -1,0 +1,45 @@
+name: Bug report
+description: ReviewBlind crashed, gave a wrong exit code, or behaved unexpectedly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This issue is public, and may be linked to you.** If your work is under anonymous review, do
+        not paste real reports, config files, names, paths or URLs. Reproduce the problem with the
+        fictional persona: Alice Example, Example University, `alice@example.edu`, `aliceexample`.
+
+        Security problems: see SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: ReviewBlind version
+      description: Output of `reviewblind --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system, Python and Git versions
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The command you ran, and a minimal synthetic file or repository
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have removed real names, emails, usernames, paths and URLs from this report
+          required: true

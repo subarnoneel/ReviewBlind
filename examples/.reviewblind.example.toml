@@ -1,0 +1,42 @@
+# Example ReviewBlind configuration. Reference: docs/CONFIG.md
+#
+# THIS FILE LISTS YOUR IDENTITIES IN PLAIN TEXT.
+# Do not include your real one in the artifact you share. `reviewblind init` adds it to
+# .git/info/exclude, or you can keep it outside the repository and pass --config.
+
+version = 1
+
+# Every value listed here counts as a confirmed identity.
+[identity]
+names = ["Alice Example"]
+emails = ["alice@example.edu"]
+usernames = ["aliceexample"]
+affiliations = ["Example University", "EU"]
+
+# Matching is exact, after Unicode normalization and casefolding. There is no fuzzy matching,
+# so list every other form of your name that you use.
+aliases = ["A. Example", "Example, Alice"]
+
+# Personal or profile URLs.
+urls = ["https://alice.example.edu", "https://orcid.org/0000-0000-0000-0000"]
+
+[scan]
+max_text_bytes = 8388608     # 8 MiB: text and manifests
+max_binary_bytes = 52428800  # 50 MiB: notebooks, PDFs and images
+follow_symlinks = false
+
+# Gitignore-style patterns. Setting this list replaces the defaults.
+exclude = [
+  ".venv/**",
+  "node_modules/**",
+  "__pycache__/**",
+  ".pytest_cache/**",
+  ".mypy_cache/**",
+]
+
+# Suppress one exact finding. Wildcards and regular expressions are not supported.
+[[allow]]
+rule = "RB101"
+path = "references.bib"
+value = "Alice Example"
+reason = "Legitimate bibliographic reference; neutral self-citation"

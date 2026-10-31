@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a new capability
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the non-goals in docs/PRODUCT.md and the plans in docs/ROADMAP.md first.
+        ReviewBlind will not add LLMs, stylometry, facial recognition, or automatic rewriting of files or history.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the anonymous-review situation where you hit this
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
