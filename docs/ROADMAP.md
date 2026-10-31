@@ -46,6 +46,7 @@ allowlist handling, and the incomplete-scan state.
 **Exit criteria:**
 - JSON conforms to `docs/REPORT_SCHEMA.md`, and two runs are byte-identical.
 - RB801–RB805 fire. The output-injection tests pass.
+- A saved report is recognized in every format, so re-scanning does not flood.
 
 ## M4 — Git and manifests
 

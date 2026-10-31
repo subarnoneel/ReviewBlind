@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from reviewblind.scanners.base import FileScanner, RepositoryScanner
+from reviewblind.scanners.packaging import GitDirectoryScanner, PackagingScanner
 from reviewblind.scanners.paths import PathScanner
 from reviewblind.scanners.text import TextScanner
 
 PATH_SCANNER: FileScanner = PathScanner()
-CONTENT_SCANNERS: tuple[FileScanner, ...] = (TextScanner(),)
-REPOSITORY_SCANNERS: tuple[RepositoryScanner, ...] = ()
+CONTENT_SCANNERS: tuple[FileScanner, ...] = (TextScanner(), PackagingScanner())
+REPOSITORY_SCANNERS: tuple[RepositoryScanner, ...] = (GitDirectoryScanner(),)

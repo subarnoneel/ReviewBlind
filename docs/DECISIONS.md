@@ -396,3 +396,47 @@ a legacy code page, such as Windows cp1252.
 
 **Decision:** the tool's own text is ASCII. Repository text keeps its real characters, and characters the console
 cannot show are escaped rather than crashing the report.
+
+### D-50: Nested `.git` directories are reported too
+
+**Issue:** RB801 described "a `.git` directory", and the inventory skipped every `.git` it met. An archive of a
+folder holding a vendored repository would ship that repository's history without any finding.
+
+**Decision:** every `.git` in the tree raises RB801, unless excluded. Only the one at the root affects RB401-RB404,
+because that is the history the Git scanner reads.
+
+### D-51: ReviewBlind's own files are a kind of artifact
+
+**Issue:** FR-PKG-3 requires a config or report to be reported rather than scanned as text. Spec section 16 lists seven
+artifact kinds, and an ordinary text scan of a saved report would produce one finding per identity it mentions.
+
+**Decision:** an eighth kind, `REVIEWBLIND`, set by file name or by a report's first bytes. All three report formats are
+recognized, including terminal output saved as UTF-16 by Windows PowerShell's `>` operator, since that is the easiest
+way to end up with a report in the repository.
+
+### D-52: Operating-system files are not also unread binaries
+
+**Issue:** `.DS_Store` and `Thumbs.db` are binary, so they would raise both RB802 and RB803, and mark the scan incomplete.
+
+**Decision:** RB802 only, and the scan stays complete. Its only meaning is that the file should not ship, and the fix is
+to delete it, not to inspect it.
+
+### D-53: Report files are written like configs
+
+**Issue:** `--output` could be pointed at a symlink planted in the repository, and a report lists author identities.
+
+**Decision:** writing through a symlink is refused, with exit code 2. Files are created through a temporary file readable
+only by the owner, then moved into place.
+
+### D-54: JSON and Markdown on stdout are always UTF-8
+
+**Issue:** on a legacy Windows code page, characters would become `\xNN` escapes, which are not valid JSON.
+
+**Decision:** those formats switch stdout to UTF-8 with LF line endings. Only the terminal format adapts to the console.
+
+### D-55: `--fail-on info` fails in every Git repository
+
+**Issue:** spec section 31 makes RB801 INFO under `mirror`, so every Git repository has at least one INFO finding, and
+`--fail-on info` always fails there.
+
+**Decision:** kept as specified. INFO is context, and `--fail-on info` is unusual. The verdict does not change.

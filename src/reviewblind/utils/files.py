@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import codecs
+import os
 import re
+import tempfile
 from pathlib import Path
 
 from reviewblind.models import ArtifactKind
@@ -12,6 +14,12 @@ SNIFF_BYTES = 8192
 
 _MANIFEST_NAMES = frozenset(
     {"pyproject.toml", "package.json", "setup.py", "setup.cfg", "citation.cff"}
+)
+CONFIG_FILE_NAME = ".reviewblind.toml"
+_REPORT_MARKER = re.compile(
+    r"\s*\{\s*\"schema_version\"\s*:\s*\d+\s*,\s*\"tool\"\s*:\s*\{\s*\"name\"\s*:\s*\"reviewblind\""
+    r"|<!-- reviewblind-report schema="
+    r"|ReviewBlind \S+\r?\nTarget: "
 )
 _LEGAL_NAME = re.compile(r"(?:licen[cs]e|notice|copying|authors)(?:[._-].*)?", re.IGNORECASE)
 _KIND_BY_EXTENSION = {
@@ -68,9 +76,17 @@ def looks_like_text(head: bytes) -> bool:
     return True
 
 
+def _is_report(head: bytes) -> bool:
+    # PowerShell redirects output as UTF-16, so a saved report may not be UTF-8.
+    sample = head.decode(_encoding_from_bom(head) or "utf-8", "ignore")
+    return _REPORT_MARKER.match(sample) is not None
+
+
 def classify(relpath: str, head: bytes) -> ArtifactKind:
-    """Filename first, then extension, then content."""
+    """Our own files first, then filename, then extension, then content."""
     name = relpath.rsplit("/", 1)[-1]
+    if name == CONFIG_FILE_NAME or _is_report(head):
+        return ArtifactKind.REVIEWBLIND
     if name.lower() in _MANIFEST_NAMES or _LEGAL_NAME.fullmatch(name):
         return ArtifactKind.MANIFEST
     extension = name[name.rfind(".") :].lower() if "." in name else ""
@@ -94,3 +110,19 @@ def read_limited(path: Path, limit: int) -> bytes | None:
 def decode_text(content: bytes) -> str:
     """Decode file content. Raises `UnicodeDecodeError` if it is not valid text."""
     return content.decode(_encoding_from_bom(content[:4]) or "utf-8")
+
+
+def atomic_write(path: Path, content: bytes) -> None:
+    """Write through a private temporary file, which replaces the directory entry when done.
+
+    Replacing swaps the entry rather than following it, and the temporary file is readable only by
+    its owner. Both matter, because configs and reports list author identities.
+    """
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.")
+    try:
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(content)
+        Path(temporary).replace(path)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise

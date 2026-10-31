@@ -14,9 +14,12 @@ from rich.text import Text
 from reviewblind import __version__
 from reviewblind.config import ConfigError, find_config, load_config
 from reviewblind.engine import compute_exit_code, run_scan
-from reviewblind.models import Severity, Target
+from reviewblind.models import ScanReport, Severity, Target
+from reviewblind.reporters.json import render_json
+from reviewblind.reporters.markdown import render_markdown
 from reviewblind.reporters.terminal import render_report, render_rule, render_rule_list
 from reviewblind.rules.registry import all_rules, get_rule, is_known_rule
+from reviewblind.utils.files import atomic_write
 
 EXIT_USAGE = 2
 EXIT_INTERNAL = 4
@@ -33,6 +36,12 @@ class TargetOption(StrEnum):
     MIRROR = "mirror"
     ARCHIVE = "archive"
     REPOSITORY = "repository"
+
+
+class FormatOption(StrEnum):
+    TERMINAL = "terminal"
+    JSON = "json"
+    MARKDOWN = "markdown"
 
 
 class FailOnOption(StrEnum):
@@ -63,6 +72,40 @@ def _error(message: str) -> None:
 def _exit_with_error(message: str, code: int = EXIT_USAGE) -> NoReturn:
     _error(message)
     raise typer.Exit(code)
+
+
+def _render(report: ScanReport, output_format: FormatOption) -> str | Text:
+    if output_format is FormatOption.JSON:
+        return render_json(report)
+    if output_format is FormatOption.MARKDOWN:
+        return render_markdown(report)
+    return render_report(report)
+
+
+def _write_stdout(document: str) -> None:
+    # A machine-readable format must not depend on the console's code page or line endings.
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8", newline="\n")
+    sys.stdout.write(document)
+    sys.stdout.flush()
+
+
+def _write_report(path: Path, document: str, root: Path) -> None:
+    """Write a report file. It lists author identities, so a path inside the scan is flagged."""
+    # A symlink planted in the repository could otherwise redirect the write (threat T-06).
+    if path.is_symlink():
+        _exit_with_error(f"refusing to write through a symbolic link: {path}")
+    try:
+        atomic_write(path, document.encode("utf-8"))
+    except OSError as error:
+        _exit_with_error(f"cannot write {path}: {error.strerror or error}")
+    _error(f"wrote the report to {path}")
+    if path.resolve().is_relative_to(root):
+        _error(
+            "warning: the report is inside the scanned directory, and it lists your identities. "
+            "Keep it out of the artifact you share."
+        )
 
 
 def _show_version(value: bool) -> None:
@@ -96,6 +139,12 @@ def scan(
     strict: Annotated[
         bool, typer.Option("--strict", help="An incomplete scan causes exit code 3.")
     ] = False,
+    output_format: Annotated[
+        FormatOption, typer.Option("--format", help="Report format.")
+    ] = FormatOption.TERMINAL,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write the report to a file.")
+    ] = None,
 ) -> None:
     """Inspect an artifact and report what could identify its authors."""
     _prepare_streams()
@@ -110,7 +159,7 @@ def scan(
                 "Run `reviewblind init`, or add them by hand."
             )
         report = run_scan(path.resolve(), loaded, Target[target.name], config_path)
-        rendered = render_report(report)
+        rendered = _render(report, output_format)
     except typer.Exit:
         raise  # Typer's own exit signal is an Exception, and is not a failure
     except ConfigError as error:
@@ -121,7 +170,13 @@ def scan(
             "If you report it, please reproduce it without your real identities.",
             EXIT_INTERNAL,
         )
-    _print(rendered)
+    if output is not None:
+        plain = rendered.plain if isinstance(rendered, Text) else rendered
+        _write_report(output, plain, report.root)
+    elif isinstance(rendered, Text):
+        _print(rendered)
+    else:
+        _write_stdout(rendered)
     raise typer.Exit(compute_exit_code(report.result, Severity[fail_on.name], strict=strict))
 
 

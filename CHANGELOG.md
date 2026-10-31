@@ -16,3 +16,6 @@ All notable changes to this project are documented here. The format is based on
 - `reviewblind scan` for text files and file names, with `--target`, `--config`, `--fail-on` and `--strict`, and
   `reviewblind rules`. Notebooks, PDFs, images and Git history are not inspected yet, and are reported as skipped.
 - A hardened Git runner that cannot be made to run repository-defined code.
+- JSON and Markdown reports with `--format` and `--output`, byte-identical across runs.
+- Exact `[[allow]]` suppressions, which stay visible in the JSON report.
+- Packaging checks: `.git`, operating-system files, unknown binaries, archives, and ReviewBlind's own config and reports.

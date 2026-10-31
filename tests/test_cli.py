@@ -2,31 +2,38 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from _helpers import PERSONA, write_tree
+from _helpers import PERSONA, symlink_or_skip, write_tree
 from reviewblind import __version__, cli
-from reviewblind.config import Config, write_config
+from reviewblind.config import Config, ScanSettings, write_config
 
 runner = CliRunner()
 
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
+    # The config lives outside the tree: inside it, RB805 would rightly be a finding in every test.
     root = tmp_path / "repo"
     root.mkdir()
-    write_config(PERSONA, root / ".reviewblind.toml")
+    write_config(PERSONA, tmp_path / "private.toml")
     return root
 
 
-def scan(*args: str | Path):  # type: ignore[no-untyped-def]
-    return runner.invoke(cli.app, ["scan", *map(str, args)])
+def scan(path: Path, *args: str | Path):  # type: ignore[no-untyped-def]
+    arguments = ["scan", str(path), *map(str, args)]
+    private = path.parent / "private.toml"
+    if private.exists() and "--config" not in arguments:
+        arguments += ["--config", str(private)]
+    return runner.invoke(cli.app, arguments)
 
 
 # Exit codes
@@ -124,7 +131,9 @@ def test_exit_2_for_an_invalid_exclude_pattern(tmp_path: Path) -> None:
 
 
 def test_exit_3_only_with_strict(repo: Path) -> None:
-    write_tree(repo, {"weights.bin": b"\x00\x01"})
+    small = replace(PERSONA, scan=ScanSettings(max_text_bytes=5, exclude=()))
+    write_config(small, repo.parent / "private.toml", force=True)
+    write_tree(repo, {"big.txt": "x" * 10})
     relaxed = scan(repo)
     assert relaxed.exit_code == 0
     assert "Scan complete: NO" in relaxed.stdout
@@ -175,12 +184,14 @@ def test_a_missing_explicit_config_does_not_fall_back(repo: Path, tmp_path: Path
     assert result.exit_code == 2
 
 
-def test_the_config_in_the_root_is_not_scanned_when_relative(
+def test_a_config_in_the_root_is_reported_rather_than_scanned(
     repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    write_config(PERSONA, repo / ".reviewblind.toml")
     monkeypatch.chdir(repo)
     result = runner.invoke(cli.app, ["scan"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
+    assert "BLOCKER  RB805" in result.stdout
     assert "RB10" not in result.stdout
 
 
@@ -209,7 +220,7 @@ def test_report_contains_what_the_specification_requires(repo: Path) -> None:
     for expected in (
         f"ReviewBlind {__version__}",
         "Identities: 7 confirmed",
-        "Files inspected: 2",
+        "Files inspected: 1",
         "Files skipped: 0",
         "Found confirmed author name:",
         "by Alice Example",
@@ -328,9 +339,12 @@ def test_no_arguments_shows_help() -> None:
 # Real processes
 
 
-def run_module(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[bytes]:
+def run_module(
+    repo: Path, *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[bytes]:
+    private = str(repo.parent / "private.toml")
     return subprocess.run(
-        [sys.executable, "-m", "reviewblind", *args],
+        [sys.executable, "-m", "reviewblind", "scan", str(repo), "--config", private, *args],
         capture_output=True,
         env={**os.environ, **(env or {})},
         stdin=subprocess.DEVNULL,
@@ -341,7 +355,7 @@ def run_module(*args: str, env: dict[str, str] | None = None) -> subprocess.Comp
 
 def test_running_as_a_module_passes_through_the_exit_code(repo: Path) -> None:
     write_tree(repo, {"a.txt": "Alice Example\n"})
-    completed = run_module("scan", str(repo))
+    completed = run_module(repo)
     assert completed.returncode == 1
     assert b"RB101" in completed.stdout
 
@@ -349,11 +363,11 @@ def test_running_as_a_module_passes_through_the_exit_code(repo: Path) -> None:
 def test_a_name_the_console_cannot_encode_does_not_crash_the_report(repo: Path) -> None:
     write_config(
         Config(identity=PERSONA.identity.__class__(names=("\u5f20\u4f1f",))),
-        repo / ".reviewblind.toml",
+        repo.parent / "private.toml",
         force=True,
     )
     write_tree(repo, {"a.txt": "by \u5f20\u4f1f\n"})
-    completed = run_module("scan", str(repo), env={"PYTHONIOENCODING": "cp1252"})
+    completed = run_module(repo, env={"PYTHONIOENCODING": "cp1252"})
     assert completed.returncode == 1
     assert b"RESULT:" in completed.stdout
 
@@ -361,5 +375,114 @@ def test_a_name_the_console_cannot_encode_does_not_crash_the_report(repo: Path) 
 def test_no_color_is_honoured_and_redirected_output_is_plain(repo: Path) -> None:
     # NFR-USE-2
     write_tree(repo, {"a.txt": "Alice Example\n"})
-    assert b"\x1b[" not in run_module("scan", str(repo)).stdout
-    assert b"\x1b[" not in run_module("scan", str(repo), env={"NO_COLOR": "1"}).stdout
+    assert b"\x1b[" not in run_module(repo).stdout
+    assert b"\x1b[" not in run_module(repo, env={"NO_COLOR": "1"}).stdout
+
+
+# Report formats and files
+
+
+def test_json_on_stdout_is_only_json(repo: Path) -> None:
+    write_tree(repo, {"a.txt": "Alice Example\n"})
+    result = scan(repo, "--format", "json")
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["findings"][0]["rule_id"] == "RB101"
+
+
+def test_markdown_on_stdout(repo: Path) -> None:
+    write_tree(repo, {"a.txt": "Alice Example\n"})
+    result = scan(repo, "--format", "markdown")
+    assert result.exit_code == 1
+    assert result.stdout.startswith("<!-- reviewblind-report schema=1 -->")
+
+
+def test_an_unknown_format_is_exit_2(repo: Path) -> None:
+    assert scan(repo, "--format", "sarif").exit_code == 2
+
+
+@pytest.mark.parametrize(
+    ("output_format", "expected"),
+    [
+        ("json", '"schema_version": 1'),
+        ("markdown", "# ReviewBlind report"),
+        ("terminal", "RESULT:"),
+    ],
+)
+def test_output_writes_a_file_and_keeps_the_exit_code(
+    repo: Path, output_format: str, expected: str
+) -> None:
+    # FR-REP-2
+    write_tree(repo, {"a.txt": "Alice Example\n"})
+    path = repo.parent / "report.out"
+    result = scan(repo, "--format", output_format, "--output", path)
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "wrote the report" in result.stderr
+    assert "warning" not in result.stderr
+    assert expected in path.read_bytes().decode("utf-8")
+    assert b"\r" not in path.read_bytes()
+
+
+def test_short_output_flag(repo: Path) -> None:
+    path = repo.parent / "report.json"
+    assert scan(repo, "--format", "json", "-o", path).exit_code == 0
+    assert path.exists()
+
+
+def test_a_report_file_has_no_color(repo: Path) -> None:
+    write_tree(repo, {"a.txt": "Alice Example\n"})
+    path = repo.parent / "report.txt"
+    scan(repo, "-o", path)
+    assert b"\x1b[" not in path.read_bytes()
+
+
+def test_an_existing_report_is_replaced(repo: Path) -> None:
+    path = repo.parent / "report.json"
+    path.write_text("old", encoding="utf-8")
+    scan(repo, "--format", "json", "-o", path)
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 1
+
+
+def test_a_report_inside_the_scan_prints_a_warning(repo: Path) -> None:
+    # FR-SCAN-8 and threat T-21
+    result = scan(repo, "--format", "json", "-o", repo / "report.json")
+    assert "warning" in result.stderr
+    assert "lists your identities" in result.stderr
+
+
+def test_a_second_scan_reports_the_saved_report_once(repo: Path) -> None:
+    write_tree(repo, {"a.txt": "Alice Example\n"})
+    scan(repo, "--format", "json", "-o", repo / "report.json")
+    assert "RB805" in scan(repo).stdout
+    assert scan(repo).stdout.count("RB101") == 1
+
+
+def test_an_unwritable_report_is_exit_2(repo: Path) -> None:
+    result = scan(repo, "-o", repo.parent / "missing" / "report.txt")
+    assert result.exit_code == 2
+    assert "cannot write" in result.stderr
+
+
+def test_a_report_is_not_written_through_a_symlink(repo: Path) -> None:
+    # Threat T-06: a link planted in the repository must not redirect the report.
+    outside = repo.parent / "outside.txt"
+    outside.write_text("untouched", encoding="utf-8")
+    link = repo.parent / "report.txt"
+    symlink_or_skip(link, outside)
+    result = scan(repo, "-o", link)
+    assert result.exit_code == 2
+    assert "symbolic link" in result.stderr
+    assert outside.read_text(encoding="utf-8") == "untouched"
+
+
+def test_json_is_utf8_whatever_the_console_encoding(repo: Path) -> None:
+    write_config(
+        Config(identity=PERSONA.identity.__class__(names=("\u5f20\u4f1f",))),
+        repo.parent / "private.toml",
+        force=True,
+    )
+    write_tree(repo, {"a.txt": "by \u5f20\u4f1f\n"})
+    completed = run_module(repo, "--format", "json", env={"PYTHONIOENCODING": "cp1252"})
+    assert completed.returncode == 1
+    loaded = json.loads(completed.stdout.decode("utf-8"))
+    assert loaded["findings"][0]["matched"] == "\u5f20\u4f1f"

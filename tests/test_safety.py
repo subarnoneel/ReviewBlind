@@ -269,7 +269,7 @@ def test_a_scan_opens_no_network_connection(
     monkeypatch.setattr(socket, "socket", no_network)
     root = init_repo(tmp_path / "repo", {"a.txt": "Alice Example\n"})
     git(root, "remote", "add", "origin", "https://example.org/repo.git")
-    assert rules_found(findings(root)) == ["RB101"]
+    assert "RB101" in rules_found(findings(root))
 
 
 def test_git_planted_in_the_repository_is_never_chosen(

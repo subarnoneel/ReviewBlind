@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from rich.text import Text
 
 from reviewblind.engine import compute_verdict
 from reviewblind.models import Finding, Rule, ScanReport, Severity, Target
+from reviewblind.reporters import display_root
 from reviewblind.utils.text import sanitize_text
 
 _TARGET_LABELS = {
@@ -28,15 +27,6 @@ _SUMMARY_LABELS = {
     Severity.INFO: "INFO",
 }
 _SEPARATOR = "-" * 36
-
-
-def display_root(root: Path) -> str:
-    """Show a home directory as `~`, so a shared terminal capture reveals less."""
-    resolved = root.resolve()
-    try:
-        return "~/" + resolved.relative_to(Path.home().resolve()).as_posix()
-    except (ValueError, RuntimeError):
-        return resolved.as_posix()
 
 
 def _location_lines(finding: Finding) -> list[str]:
@@ -76,6 +66,8 @@ def render_report(report: ScanReport) -> Text:
     output.append(f"Files inspected: {result.inspected}\n")
     output.append(f"Files excluded: {result.excluded}\n")
     output.append(f"Files skipped: {len(result.skipped)}\n")
+    if result.suppressed:
+        output.append(f"Findings suppressed: {len(result.suppressed)}\n")
     output.append(f"Scan complete: {'NO' if result.incomplete else 'YES'}\n\n")
 
     for finding in result.findings:

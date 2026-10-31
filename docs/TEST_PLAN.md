@@ -32,6 +32,7 @@ The objective is to prove three things:
 | `test_inventory.py` | Scope for each target, symlinks, excludes | 6 |
 | `test_fingerprints.py` | Fingerprint stability | 4 |
 | `test_packaging_scanner.py` | Packaging, including RB805 | 5 |
+| `test_allowlist.py` | Exact suppressions | Added in M3 |
 | `test_rules.py` | Catalogue integrity | 3 |
 | `test_reporters.py` | Terminal, JSON, Markdown | 6 |
 | `test_exporters.py` | Term lists | 4 |
