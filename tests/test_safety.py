@@ -16,6 +16,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 import reviewblind
 from _helpers import (
@@ -29,6 +30,7 @@ from _helpers import (
     symlink_or_skip,
     write_tree,
 )
+from reviewblind import cli
 from reviewblind.config import ScanSettings
 from reviewblind.matching import IdentityMatcher
 from reviewblind.models import SkipReason, Target
@@ -333,6 +335,56 @@ def test_scanning_does_not_add_the_repository_to_the_import_path(tmp_path: Path)
     before = list(sys.path)
     scan(root)
     assert sys.path == before
+
+
+# Discovery and init read and write in a repository that may be hostile
+
+
+def _fully_hostile_repo(root: Path, marker: Path) -> Path:
+    init_repo(root, {"a.txt": "hello\n", ".gitattributes": "*.txt filter=x diff=x\n"})
+    _signed_commit(root)
+    _hostile_gpg(root, marker)
+    git(root, "config", "core.fsmonitor", marker_command(marker))
+    git(root, "config", "filter.x.clean", marker_command(marker))
+    git(root, "config", "diff.x.command", marker_command(marker))
+    write_tree(root, {"a.txt": "HELLO\n"})
+    touch_later(root / "a.txt")
+    return root
+
+
+@pytest.mark.parametrize(
+    "command",
+    [["discover"], ["discover", "--json", "--include-env"], ["init", "--yes", "--force"]],
+    ids=["discover", "discover-json", "init"],
+)
+def test_discovery_and_init_run_nothing_from_the_repository(
+    tmp_path: Path, command: list[str]
+) -> None:
+    marker = tmp_path / "marker"
+    root = _fully_hostile_repo(tmp_path / "repo", marker)
+    write_tree(root, {"CITATION.cff": "authors:\n  - name: Alice Example\n"})
+    write_tree(
+        root,
+        {"setup.py": f"import pathlib\npathlib.Path({marker.as_posix()!r}).write_text('ran')\n"},
+    )
+    result = CliRunner().invoke(cli.app, [*command[:1], str(root), *command[1:]])
+    assert result.exit_code == 0
+    assert not fired(marker)
+
+
+def test_a_yaml_tag_in_a_citation_cannot_run_code_during_discovery(tmp_path: Path) -> None:
+    marker = tmp_path / "marker"
+    root = tmp_path / "repo"
+    write_tree(
+        root,
+        {
+            "CITATION.cff": f"authors: !!python/object/apply:os.system ['echo x > {marker.as_posix()}']\n"
+        },
+    )
+    result = CliRunner().invoke(cli.app, ["discover", str(root)])
+    assert result.exit_code == 0
+    assert not fired(marker)
+    assert "could not be parsed" in result.stderr
 
 
 # T-04: a nested bare repository

@@ -12,15 +12,29 @@ from rich.console import Console
 from rich.text import Text
 
 from reviewblind import __version__
-from reviewblind.config import ConfigError, find_config, load_config
+from reviewblind.config import (
+    Config,
+    ConfigError,
+    IdentityConfig,
+    find_config,
+    load_config,
+    write_config,
+)
+from reviewblind.discovery import Candidate, Discovery, discover
 from reviewblind.engine import compute_exit_code, run_scan
-from reviewblind.models import ScanReport, Severity, Target
-from reviewblind.reporters.json import render_json
+from reviewblind.initializer import ExcludeResult, add_to_exclude_file, is_tracked
+from reviewblind.models import Confidence, IdentityKind, ScanReport, Severity, Target
+from reviewblind.reporters.json import render_discovery_json, render_json
 from reviewblind.reporters.markdown import render_markdown
-from reviewblind.reporters.terminal import render_report, render_rule, render_rule_list
+from reviewblind.reporters.terminal import (
+    render_candidates,
+    render_report,
+    render_rule,
+    render_rule_list,
+)
 from reviewblind.rules.registry import all_rules, get_rule, is_known_rule
 from reviewblind.scanners.base import DEFAULT_MAX_COMMITS
-from reviewblind.utils.files import atomic_write
+from reviewblind.utils.files import CONFIG_FILE_NAME, atomic_write
 
 EXIT_USAGE = 2
 EXIT_INTERNAL = 4
@@ -199,6 +213,191 @@ def rules(
     if not is_known_rule(normalized):
         _exit_with_error(f"unknown rule: {rule_id}. Run `reviewblind rules` to list them.")
     _print(render_rule(get_rule(normalized)))
+
+
+_CONFIG_KEYS = {
+    IdentityKind.NAME: "names",
+    IdentityKind.EMAIL: "emails",
+    IdentityKind.USERNAME: "usernames",
+    IdentityKind.AFFILIATION: "affiliations",
+    IdentityKind.ALIAS: "aliases",
+    IdentityKind.URL: "urls",
+}
+
+
+def _run_discovery(path: Path, *, include_env: bool, max_commits: int) -> Discovery:
+    if not path.is_dir():
+        _exit_with_error(f"not a directory: {path}")
+    try:
+        return discover(path.resolve(), include_env=include_env, max_commits=max_commits)
+    except ConfigError as error:
+        _exit_with_error(str(error))
+    except Exception as error:
+        _exit_with_error(
+            f"internal error: {type(error).__name__}: {error}. This is a bug in ReviewBlind. "
+            "If you report it, please reproduce it without your real identities.",
+            EXIT_INTERNAL,
+        )
+
+
+@app.command(name="discover")
+def discover_command(
+    path: Annotated[Path, typer.Argument(help="Directory to inspect.")] = Path(),
+    as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
+    include_env: Annotated[
+        bool, typer.Option("--include-env", help="Also inspect USER and the home directory.")
+    ] = False,
+    max_commits: Annotated[
+        int, typer.Option(min=1, help="Newest commits to read, from all branches.")
+    ] = DEFAULT_MAX_COMMITS,
+) -> None:
+    """List likely author identities. Writes nothing."""
+    _prepare_streams()
+    found = _run_discovery(path, include_env=include_env, max_commits=max_commits)
+    if as_json:
+        _write_stdout(render_discovery_json(found))
+        return
+    _print(render_candidates(found.candidates))
+    if not found.candidates:
+        _print(Text("\nNo likely identities were found.\n"))
+    for note in found.notes:
+        _error(note)
+
+
+def _stdin_is_interactive() -> bool:
+    return sys.stdin is not None and sys.stdin.isatty()
+
+
+def _ask(question: str, default: str = "") -> str:
+    """Prompts go to stderr, so stdout stays clean if it is redirected."""
+    try:
+        answer: str = typer.prompt(question, default=default, show_default=False, err=True)
+    except typer.Abort:
+        _exit_with_error("cancelled. Nothing was written.")
+    return answer.strip()
+
+
+def _parse_numbers(answer: str, count: int) -> set[int] | None:
+    numbers = set()
+    for word in answer.replace(",", " ").split():
+        if not word.isdigit() or not 1 <= int(word) <= count:
+            return None
+        numbers.add(int(word))
+    return numbers
+
+
+def _choose(candidates: tuple[Candidate, ...], selected: set[int]) -> set[int]:
+    """Let a person review the list. Nothing is written until they accept it."""
+    while True:
+        _print(render_candidates(candidates, selected))
+        answer = _ask("Accept selected identities? [Y/n]", default="y").lower()
+        if answer in {"y", "yes"}:
+            if selected:
+                return selected
+            _error("select at least one identity, or press Ctrl+C to cancel.")
+        elif answer not in {"n", "no"}:
+            _error("please answer y or n.")
+            continue
+        answer = _ask("Numbers to select or unselect (for example: 4 5). Enter to go back")
+        numbers = _parse_numbers(answer, len(candidates))
+        if numbers is None:
+            _error(f"please use numbers from 1 to {len(candidates)}.")
+        else:
+            selected ^= numbers
+
+
+def _build_config(chosen: list[Candidate]) -> Config:
+    values: dict[str, list[str]] = {key: [] for key in _CONFIG_KEYS.values()}
+    for candidate in chosen:
+        values[_CONFIG_KEYS[candidate.kind]].append(candidate.value)
+    return Config(identity=IdentityConfig(**{key: tuple(items) for key, items in values.items()}))
+
+
+def _report_exclude(result: ExcludeResult, config_path: Path) -> None:
+    if result.not_a_repository:
+        _error(
+            "This is not a Git repository, so nothing keeps the config out of what you share. "
+            "Keep it out yourself."
+        )
+    elif result.problem is not None:
+        _error(f"warning: could not update .git/info/exclude: {result.problem}")
+    elif result.added:
+        _error(f"Added {' and '.join(result.added)} to .git/info/exclude")
+    if result.config_is_tracked:
+        _error(
+            f"warning: {config_path} is already tracked by Git, so excluding it has no effect. "
+            "Run `git rm --cached` on it, or keep your config outside the repository."
+        )
+
+
+@app.command()
+def init(
+    path: Annotated[Path, typer.Argument(help="Directory to inspect.")] = Path(),
+    config: Annotated[
+        Path | None, typer.Option(help="Where to write. Default: PATH/.reviewblind.toml")
+    ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing config.")] = False,
+    yes: Annotated[
+        bool, typer.Option("--yes", help="Accept high-confidence candidates without asking.")
+    ] = False,
+    include_env: Annotated[
+        bool, typer.Option("--include-env", help="Also inspect USER and the home directory.")
+    ] = False,
+    max_commits: Annotated[
+        int, typer.Option(min=1, help="Newest commits to read, from all branches.")
+    ] = DEFAULT_MAX_COMMITS,
+    no_exclude: Annotated[
+        bool, typer.Option("--no-exclude", help="Do not add entries to .git/info/exclude.")
+    ] = False,
+) -> None:
+    """Find likely identities, confirm them, and write the config."""
+    _prepare_streams()
+    config_path = config if config is not None else path / CONFIG_FILE_NAME
+    if config_path.is_symlink():
+        _exit_with_error(f"refusing to write through a symbolic link: {config_path}")
+    if config_path.exists() and not force:
+        _exit_with_error(f"{config_path} already exists. Use --force to overwrite it.")
+    if not yes and not _stdin_is_interactive():
+        _exit_with_error(
+            "no terminal to ask you on. Use --yes to accept high-confidence candidates."
+        )
+
+    found = _run_discovery(path, include_env=include_env, max_commits=max_commits)
+    for note in found.notes:
+        _error(note)
+    candidates = found.candidates
+    if not candidates:
+        _exit_with_error(
+            "no likely identities were found, so no config was written. "
+            "Create one by hand: see docs/CONFIG.md."
+        )
+    # Only HIGH is preselected. Anything weaker needs a person's choice (FR-INIT-2, FR-INIT-4).
+    selected = {
+        number
+        for number, candidate in enumerate(candidates, start=1)
+        if candidate.confidence is Confidence.HIGH
+    }
+    if yes:
+        _print(render_candidates(candidates, selected))
+        if not selected:
+            _exit_with_error(
+                "no high-confidence candidates, so no config was written. "
+                "Run without --yes to choose from the others."
+            )
+    else:
+        selected = _choose(candidates, selected)
+
+    chosen = [candidates[number - 1] for number in sorted(selected)]
+    try:
+        write_config(_build_config(chosen), config_path, force=force)
+    except ConfigError as error:
+        _exit_with_error(str(error))
+    _error(f"Created {config_path}")
+    if not no_exclude:
+        _report_exclude(add_to_exclude_file(path.resolve(), config_path.resolve()), config_path)
+    elif is_tracked(path.resolve(), config_path.resolve()):
+        _report_exclude(ExcludeResult(config_is_tracked=True), config_path)
+    _error("This file lists your identities. Do not include it in the artifact you share.")
 
 
 def main() -> None:

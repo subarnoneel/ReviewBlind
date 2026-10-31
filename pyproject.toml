@@ -99,7 +99,8 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S603", "S607"]  # assert and subprocess are fine in tests
+# assert and subprocess are fine in tests, and fixture strings read better on one line
+"tests/**" = ["S101", "S603", "S607", "E501"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -53,10 +53,10 @@ Details live in one place and are referenced from here:
 | ID | Requirement |
 |---|---|
 | FR-DISC-1 | MUST inspect Git author names, committer names, email addresses and remotes |
-| FR-DISC-2 | MUST inspect `pyproject.toml`, `package.json`, `setup.py`, `setup.cfg` and `CITATION.cff` |
+| FR-DISC-2 | MUST inspect `pyproject.toml`, `package.json`, `setup.py`, `setup.cfg` and `CITATION.cff` at the top of the directory |
 | FR-DISC-3 | MUST inspect selected LaTeX author macros and repository URLs |
 | FR-DISC-4 | MUST read local environment identity (`USER`, home directory) only when `--include-env` is passed |
-| FR-DISC-5 | MUST assign confidence: **HIGH** for a direct structured author field or a repeated Git identity; **MEDIUM** for a repository owner, affiliation or structured URL; **LOW** for a derived alias or environment username |
+| FR-DISC-5 | MUST assign confidence: **HIGH** for a direct structured author field or a repeated Git identity; **MEDIUM** for a single-commit Git identity, repository owner, affiliation, structured URL, or license holder; **LOW** for a derived alias, email local part or environment username |
 | FR-DISC-6 | MUST raise confidence by one level, up to HIGH, when two independent source classes agree |
 | FR-DISC-7 | MUST filter bots and map GitHub noreply addresses to the username they contain |
 | FR-DISC-8 | MUST report every source of each candidate |

@@ -85,7 +85,8 @@ reviewblind/
 │   ├── fingerprints.py     Stable finding fingerprints
 │   ├── matching.py         Identity matching and overlap resolution
 │   ├── signals.py          Structural signals: home paths, namespaces, hostnames, schedulers
-│   ├── discovery/          git.py, manifests.py, latex.py
+│   ├── initializer.py      Keeps a new config out of Git
+│   ├── discovery/          candidates.py, git.py, manifests.py, latex.py
 │   ├── scanners/           base.py, text.py, paths.py, manifests.py, git.py,
 │   │                       notebook.py, pdf.py, image.py, packaging.py
 │   ├── rules/              catalog.py (the rules), registry.py (lookup)
@@ -396,7 +397,8 @@ The executable itself is found by searching absolute `PATH` entries outside the 
 absolute path. Windows otherwise searches the current directory first, so a repository could run its own
 `git.exe` simply by being scanned.
 
-**Allowlisted commands**, matched exactly: `rev-parse --is-inside-work-tree`, `ls-files --cached -z`,
+**Allowlisted commands**, matched exactly: `rev-parse --is-inside-work-tree`,
+`rev-parse --git-path info/exclude`, `ls-files --cached -z`,
 `ls-files --others --exclude-standard -z`, `ls-files -s -z`, `remote -v`, `rev-list --all --count`, and one fixed
 `log` command whose only variable part is `--max-count=<digits>`.
 

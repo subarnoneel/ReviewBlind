@@ -21,3 +21,5 @@ All notable changes to this project are documented here. The format is based on
 - Packaging checks: `.git`, operating-system files, unknown binaries, archives, and ReviewBlind's own config and reports.
 - Git history checks: remotes, authors, committers, emails and commit messages, with `--max-commits`.
 - Manifest checks: `pyproject.toml`, `package.json`, `setup.cfg`, `setup.py`, `CITATION.cff`, and license and authors files.
+- `reviewblind discover`, which finds likely identities from Git, manifests and LaTeX, and writes nothing.
+- `reviewblind init`, which lets you confirm them, writes `.reviewblind.toml` and adds it to `.git/info/exclude`.

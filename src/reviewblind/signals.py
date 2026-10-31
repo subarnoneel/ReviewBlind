@@ -101,6 +101,9 @@ _WANDB_PAGES = frozenset(
 )
 
 
+_SITE_PAGES = frozenset({"features", "marketplace", "orgs", "settings", "topics", "users"})
+
+
 class SignalKind(Enum):
     HOME_PATH = "HOME_PATH"
     INSTITUTION_DOMAIN = "INSTITUTION_DOMAIN"
@@ -131,6 +134,27 @@ class Signal:
     @property
     def evidence_class(self) -> EvidenceClass:
         return _EVIDENCE_CLASS[self.kind]
+
+
+def is_placeholder_user(name: str) -> bool:
+    """A generic account name, such as `runner` or `ubuntu`, which identifies nobody."""
+    return name.casefold() in _PLACEHOLDER_USERS
+
+
+def namespace_owner(url: str) -> str | None:
+    """The account a hosting or research-service URL belongs to, if it has one."""
+    match = _SERVICE_URL.search(url)
+    if match is not None:
+        host = match["host"].lower()
+        owner = match["first"].rstrip(".")
+        section = owner.lower()
+        if host == "huggingface.co" and section in _HUGGING_FACE_SECTIONS:
+            owner = (match["second"] or "").rstrip(".")
+        elif (host == "wandb.ai" and section in _WANDB_PAGES) or section in _SITE_PAGES:
+            return None
+        return owner or None
+    pages = _PAGES_HOST.search(url)
+    return pages["owner"] if pages is not None else None
 
 
 def email_domain(email: str) -> str | None:

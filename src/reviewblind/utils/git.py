@@ -55,6 +55,7 @@ _LOG_FIELDS = 6
 ALLOWED_COMMANDS = frozenset(
     {
         ("rev-parse", "--is-inside-work-tree"),
+        ("rev-parse", "--git-path", "info/exclude"),
         ("ls-files", "--cached", "-z"),
         ("ls-files", "--others", "--exclude-standard", "-z"),
         ("ls-files", "-s", "-z"),
@@ -199,6 +200,11 @@ class GitRepository:
     def is_work_tree(self) -> bool:
         """True inside a working tree. Raises `GitError` if this is not a usable repository."""
         return self._output("rev-parse", "--is-inside-work-tree").strip() == b"true"
+
+    def exclude_file(self) -> Path:
+        """Where this repository keeps its local, untracked ignore rules."""
+        reported = self._output("rev-parse", "--git-path", "info/exclude").strip()
+        return self._root / os.fsdecode(reported)
 
     def tracked_files(self) -> list[str]:
         return _split_paths(self._output("ls-files", "--cached", "-z"))

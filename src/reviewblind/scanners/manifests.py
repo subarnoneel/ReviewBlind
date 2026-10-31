@@ -74,6 +74,9 @@ _PLACEHOLDER_HOLDERS = frozenset(
         "contributors",
     }
 )
+# `Foo contributors` names a project, not a person. A team or lab name is left alone, since one
+# can identify a group as surely as a name identifies a person.
+_COLLECTIVE_LABEL = re.compile(r"\b(?:authors|contributors|developers)$")
 _PLACEHOLDER_EMAIL_DOMAINS = frozenset({"example.com", "example.net", "example.org"})
 _PLACEHOLDER_URL = re.compile(
     r"^(?:https?://)?(?:www\.)?(?:example\.(?:com|net|org)|localhost)(?:[/:]|$)", re.IGNORECASE
@@ -310,7 +313,7 @@ _PARSERS: dict[str, tuple[_Parser, dict[FieldKind, str]]] = {
     "setup.py": (parse_setup_py, _RULES_FOR_PACKAGE),
     "citation.cff": (parse_citation, _RULES_FOR_CITATION),
 }
-_PARSE_FAILURES = (ValueError, SyntaxError, RecursionError, yaml.YAMLError, configparser.Error)
+PARSE_FAILURES = (ValueError, SyntaxError, RecursionError, yaml.YAMLError, configparser.Error)
 
 
 def parser_for(name: str) -> tuple[_Parser, dict[FieldKind, str]]:
@@ -332,7 +335,11 @@ def is_placeholder(field: ManifestField) -> bool:
         return key.rpartition("@")[2] in _PLACEHOLDER_EMAIL_DOMAINS
     if "[" in field.value or "<" in field.value or "{" in field.value:
         return True  # a template, such as `[name of copyright owner]`
-    return key in _PLACEHOLDER_PEOPLE or key in _PLACEHOLDER_HOLDERS
+    return (
+        key in _PLACEHOLDER_PEOPLE
+        or key in _PLACEHOLDER_HOLDERS
+        or _COLLECTIVE_LABEL.search(key) is not None
+    )
 
 
 class ManifestScanner:
@@ -348,7 +355,7 @@ class ManifestScanner:
         parser, rules = parser_for(artifact.relpath.rsplit("/", 1)[-1])
         try:
             fields = list(parser(text))
-        except _PARSE_FAILURES as error:
+        except PARSE_FAILURES as error:
             context.report_skip(artifact.relpath, SkipReason.CORRUPT, type(error).__name__)
             return []
         return self._detections(artifact.relpath, text, fields, rules, context)
