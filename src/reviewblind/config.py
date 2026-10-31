@@ -13,6 +13,12 @@ from reviewblind.rules.registry import is_known_rule
 from reviewblind.utils.files import CONFIG_FILE_NAME, atomic_write
 
 CONFIG_VERSION = 1
+CONFIG_HEADER = (
+    "# ReviewBlind configuration. Reference: docs/CONFIG.md\n"
+    "#\n"
+    "# This file lists your identities in plain text.\n"
+    "# Do not include it in the artifact you share.\n"
+)
 MAX_CONFIG_BYTES = 1024 * 1024
 DEFAULT_MAX_TEXT_BYTES = 8 * 1024 * 1024
 DEFAULT_MAX_BINARY_BYTES = 50 * 1024 * 1024
@@ -248,7 +254,7 @@ def _toml_list(key: str, values: tuple[str, ...]) -> str:
 
 def dumps_config(config: Config) -> str:
     """Render a config as TOML. `tomllib` only reads, so this covers our one fixed schema."""
-    sections = [f"version = {CONFIG_VERSION}"]
+    sections = [f"{CONFIG_HEADER}\nversion = {CONFIG_VERSION}"]
     identity = ["[identity]"]
     identity.extend(_toml_list(key, getattr(config.identity, key)) for key in _IDENTITY_KEYS)
     sections.append("\n".join(identity))

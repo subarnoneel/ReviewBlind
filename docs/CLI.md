@@ -1,7 +1,6 @@
 # CLI Reference
 
-> Status: `scan` and `rules` work, with every flag shown here.
-> The other commands and flags here are the planned 0.1.0 interface.
+> Status: `init`, `discover`, `scan` and `rules` work, with every flag shown here. `export` is planned.
 
 Examples use the fictional researcher **Dr. Alice Example** of Example University.
 
@@ -32,43 +31,46 @@ ReviewBlind identity discovery
 
 HIGH CONFIDENCE
 
-[1] ✓ Alice Example
+[1] [x] Alice Example (name)
     Sources:
-      Git author (5 commits)
       pyproject.toml author
-      CITATION.cff
+      CITATION.cff author
+      Git author (5 commits)
 
-[2] ✓ alice@example.edu
-    Sources:
-      Git commit email
+[2] [x] alice@example.edu (email)
+    Source:
+      Git commit email (5 commits)
 
-[3] ✓ aliceexample
+[3] [x] aliceexample (username)
     Sources:
-      GitHub remote
       pyproject.toml repository URL
+      GitHub remote
+
 
 MEDIUM CONFIDENCE
 
-[4] ? Example University
+[4] [ ] Example University (affiliation)
     Source:
       CITATION.cff affiliation
 
+
 LOW CONFIDENCE
 
-[5] ? EU
+[5] [ ] EU (alias)
     Source:
       derived alias of "Example University"
 
 Accept selected identities? [Y/n]
 ```
 
-`✓` is selected and `?` is not. Answering `n` opens a prompt that takes numbers to
-toggle, then shows the list again. Nothing is written until you accept.
+`[x]` is selected and `[ ]` is not. Answering `n` opens a prompt that takes numbers to
+toggle, then shows the list again. Nothing is written until you accept, and at least one
+identity must be selected. With `--yes`, or without a terminal, nothing is asked: `--yes`
+accepts HIGH candidates only, and no terminal without `--yes` is exit code 2.
 
 ```text
 Created .reviewblind.toml
 Added .reviewblind.toml and reviewblind-report.* to .git/info/exclude
-
 This file lists your identities. Do not include it in the artifact you share.
 ```
 
@@ -86,16 +88,20 @@ Non-destructive discovery. Writes nothing.
 
 Sources: Git author names, committer names, email addresses and remotes;
 `pyproject.toml`; `package.json`; `setup.py` and `setup.cfg`; `CITATION.cff`; selected
-LaTeX author macros; repository URLs; and, with `--include-env`, local user information.
+LaTeX author macros; repository URLs; and, with `--include-env`, local user information. Only
+manifests at the top of the directory are read, because a nested one usually describes vendored
+code. LaTeX files are read anywhere, except under excluded directories such as `node_modules/`.
 
 | Confidence | Basis |
 |---|---|
 | HIGH | Direct structured author field, or repeated Git identity (2+ commits) |
 | MEDIUM | Repository owner, affiliation, structured URL, or single-commit Git identity |
+| MEDIUM (also) | License holder or `AUTHORS` entry, which may name someone else's project |
 | LOW | Derived alias, email local part alone, or environment username |
 
-Agreement between two independent source classes raises confidence by one level.
-LOW candidates are never activated automatically.
+Agreement between two independent source classes raises confidence by one level, up to HIGH.
+A local part counts as evidence from the same place as its email, so a name and an email from one
+commit do not vouch for each other. LOW candidates are never activated automatically.
 
 `--json` output:
 

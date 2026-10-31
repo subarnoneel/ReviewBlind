@@ -10,6 +10,15 @@ does not mean your artifact is anonymous. Please read this before relying on a r
 - **Your venue's rules.** ReviewBlind does not know any conference's policy. Check it yourself.
 - **Looking at flagged files.** A `REVIEW` finding means a person has to look.
 
+## Discovery only suggests
+
+`reviewblind init` proposes identities, and you decide. In particular:
+
+- A fork or imported history lists upstream authors. Anyone with two or more commits counts as HIGH
+  confidence, so `--yes` would accept them. Review the list rather than using `--yes` on such a repository.
+- A co-author with one commit is only MEDIUM, so it is not selected for you.
+- Only manifests at the top of the directory are read, to avoid suggesting the authors of vendored code.
+
 ## Not detected
 
 ### Name variations

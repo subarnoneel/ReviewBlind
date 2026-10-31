@@ -18,6 +18,7 @@ The objective is to prove three things:
 | File | Area | Planned |
 |---|---|---|
 | `test_discovery.py` | Identity discovery | 10 |
+| `test_init.py` | The first-use workflow | Added in M5 |
 | `test_matching.py` | Matching | 10 |
 | `test_text_scanner.py` | Text and path scanners | 10 |
 | `test_manifest_scanner.py` | Manifests | 7 |

@@ -487,5 +487,44 @@ incomplete.
 the `Free Software Foundation` line in the GPL's own text say nothing about the authors.
 
 **Decision:** a short list of placeholders is ignored, along with `example.com` addresses and URLs, and any value with
-template brackets. A value matching a confirmed identity is never treated as a placeholder. `example.edu` is not on the
+template brackets, and collective labels such as `Foo contributors`. A team or lab name is not ignored, since it
+can identify a group. A value matching a confirmed identity is never treated as a placeholder. `example.edu` is not on the
 list, because the test persona uses it.
+
+### D-62: Discovery reads only top-level manifests
+
+**Issue:** a vendored `third_party/x/pyproject.toml` names someone else as its author. Treated as a direct author
+field, it would be HIGH confidence, and so preselected.
+
+**Decision:** discovery reads manifests at the top of the directory only. A scan still checks every manifest, so a
+nested author field is still flagged by RB301. LaTeX files are read anywhere, since papers often live in a subfolder.
+
+### D-63: An email's local part is not independent evidence
+
+**Issue:** spec section 8 shows a username reaching HIGH from a remote plus an email local part. Treating a local part
+as its own source class also let a one-commit contributor reach HIGH: their name and their own email's local part, from
+the same commit, counted as two independent sources, and `--yes` would have accepted them.
+
+**Decision:** a local part is marked as a guess, and keeps the source class of its email. A guess can support evidence from
+another class, but two guesses cannot support each other. The example in section 8 still works, because a remote and Git
+history are different classes.
+
+### D-64: Selection marks are ASCII
+
+**Issue:** spec section 8 uses a check mark, which legacy Windows consoles cannot display (see D-49).
+
+**Decision:** `[x]` and `[ ]`. Each candidate also shows its kind, since that decides how it is matched.
+
+### D-65: License holders are MEDIUM confidence
+
+**Issue:** spec section 9 rates direct structured author fields HIGH. A `LICENSE` holder is often the upstream project, or
+an institution, rather than the author.
+
+**Decision:** MEDIUM, so a person has to choose it. RB304 still reports it in a scan.
+
+### D-66: `init` refuses to write nothing useful
+
+**Issue:** a config with no identities makes every `scan` exit with code 2, so writing one only delays the error.
+
+**Decision:** with no candidates, or none accepted under `--yes`, `init` writes nothing and exits with code 2. In interactive
+use, accepting an empty selection is refused.

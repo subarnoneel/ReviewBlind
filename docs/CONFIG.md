@@ -76,6 +76,10 @@ without its diacritics, list that form under `aliases`.
 
 Excluded paths are not inspected, and the report states how many were excluded.
 
+**Target `archive` and this file:** zipping a folder would include `.reviewblind.toml`, whatever
+`.git/info/exclude` says, so `--target archive` reports it as a BLOCKER. Keep it outside the folder and
+pass `--config`, or add `.reviewblind.toml` to `exclude`, which states that it will not be packaged.
+
 **Target `archive` and `.git`:** add `.git/**` to `exclude` only if you will not package
 the `.git` directory. This is how you tell ReviewBlind so; RB801 then no longer fires.
 A safer alternative is to scan an extracted copy of what you intend to ship.

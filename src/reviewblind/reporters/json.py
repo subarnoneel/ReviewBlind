@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from reviewblind.discovery import Discovery
 from reviewblind.engine import compute_verdict
 from reviewblind.models import Finding, ScanReport, Severity
 from reviewblind.reporters import display_config_path, display_root
@@ -89,5 +90,23 @@ def render_json(report: ScanReport) -> str:
         "suppressed": [
             {"finding": _finding(item.finding), "reason": item.reason} for item in result.suppressed
         ],
+    }
+    return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+
+
+def render_discovery_json(discovery: Discovery) -> str:
+    """The `discover --json` output, documented in docs/CLI.md."""
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "candidates": [
+            {
+                "value": candidate.value,
+                "kind": candidate.kind.value,
+                "confidence": candidate.confidence.value,
+                "sources": list(candidate.sources),
+            }
+            for candidate in discovery.candidates
+        ],
+        "notes": [_text(note) for note in discovery.notes],
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"

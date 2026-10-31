@@ -3,9 +3,9 @@
 **A deterministic, local-first CLI that preflights research repositories for accidental
 identity disclosure before double-anonymous peer review.**
 
-> **Status: pre-alpha, and not ready for real submissions.** `reviewblind scan` and `reviewblind rules` work on
-> text files, file names, manifests, Git metadata and packaging. Notebooks, PDFs and images are reported as skipped.
-> The other commands below are planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha, and not ready for real submissions.** `init`, `discover`, `scan` and `rules` work on text
+> files, file names, manifests, Git metadata and packaging. Notebooks, PDFs and images are reported as skipped, and
+> `export` is planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from rich.text import Text
 
+from reviewblind.discovery import Candidate
 from reviewblind.engine import compute_verdict
-from reviewblind.models import Finding, Rule, ScanReport, Severity, Target
+from reviewblind.models import Confidence, Finding, Rule, ScanReport, Severity, Target
 from reviewblind.reporters import display_root
 from reviewblind.utils.text import sanitize_text
 
@@ -127,4 +128,27 @@ def render_rule(rule: Rule) -> Text:
     output.append(f"\nDetects:\n{rule.description}\n\n")
     output.append(f"Why:\n{rule.reason}\n\n")
     output.append(f"Fix:\n{rule.remediation}\n")
+    return output
+
+
+def render_candidates(candidates: tuple[Candidate, ...], selected: set[int] | None = None) -> Text:
+    """List candidates by confidence. With `selected`, each also shows whether it is chosen."""
+    output = Text()
+    output.append("ReviewBlind identity discovery\n", style="bold")
+    number = 0
+    for level in Confidence:
+        group = [candidate for candidate in candidates if candidate.confidence is level]
+        if not group:
+            continue
+        output.append(f"\n{level.value} CONFIDENCE\n\n", style="bold")
+        for candidate in group:
+            number += 1
+            mark = "" if selected is None else ("[x] " if number in selected else "[ ] ")
+            kind = candidate.kind.value.lower()
+            output.append(f"[{number}] {mark}{candidate.value} ({kind})\n")
+            label = "Source" if len(candidate.sources) == 1 else "Sources"
+            output.append(f"    {label}:\n")
+            for source in candidate.sources:
+                output.append(f"      {sanitize_text(source)}\n")
+            output.append("\n")
     return output
