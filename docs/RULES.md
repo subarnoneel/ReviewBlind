@@ -105,8 +105,8 @@ Severities: **B** = BLOCKER, **W** = WARNING, **R** = REVIEW, **I** = INFO.
 | ID | Title | Mir | Arc | Repo | Conf. | Unconfirmed |
 |---|---|---|---|---|---|---|
 | RB401 | Identifying Git remote | I | I† | B | HIGH | — |
-| RB402 | Identifying Git author/committer | I | I† | B | HIGH | `repository` only: W + MEDIUM |
-| RB403 | Identifying Git email | I | I† | B | HIGH | `repository` only: W + MEDIUM |
+| RB402 | Identifying Git author/committer | I | I† | B | HIGH | `repository` only: W + MEDIUM (placeholders ignored) |
+| RB403 | Identifying Git email | I | I† | B | HIGH | `repository` only: W + MEDIUM (placeholders ignored) |
 | RB404 ◆ | Identity in commit message | I | I† | B | HIGH | — |
 
 † BLOCKER when a `.git` directory will be packaged.

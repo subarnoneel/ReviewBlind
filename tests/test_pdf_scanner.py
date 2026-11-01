@@ -12,37 +12,11 @@ from typing import Any
 
 import pytest
 
-from _helpers import PERSONA, findings, rules_found, scan, write_tree
+from _helpers import PERSONA, findings, make_pdf, rules_found, scan, write_tree
 from reviewblind.config import ScanSettings, write_config
 from reviewblind.models import Confidence, Finding, Severity, SkipReason, Target
 from reviewblind.scanners import pdf as pdf_module
 from reviewblind.scanners.pdf import load_pymupdf
-
-
-def make_pdf(
-    *,
-    metadata: dict[str, str] | None = None,
-    xmp: str | None = None,
-    pages: tuple[str, ...] = ("Some ordinary content",),
-    link: str | None = None,
-    encrypted: bool = False,
-) -> bytes:
-    pymupdf: Any = load_pymupdf()
-    document = pymupdf.open()
-    for text in pages:
-        page = document.new_page()
-        page.insert_text((72, 72), text)
-        if link:
-            page.insert_link(
-                {"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(72, 80, 200, 100), "uri": link}
-            )
-    document.set_metadata(metadata or {})
-    if xmp:
-        document.set_xml_metadata(xmp)
-    options = {"encryption": pymupdf.PDF_ENCRYPT_AES_256, "user_pw": "u", "owner_pw": "o"}
-    content: bytes = document.tobytes(**(options if encrypted else {}))
-    document.close()
-    return content
 
 
 def scan_pdf(root: Path, content: bytes) -> list[Finding]:

@@ -1,0 +1,5 @@
+model: bert-base-uncased
+tokenizer: https://huggingface.co/bert-base-uncased
+data_root: ${DATA_ROOT}
+output: ./results
+learning_rate: 0.001

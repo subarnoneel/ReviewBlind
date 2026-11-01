@@ -59,11 +59,16 @@ cli → engine → scanners → matching → models
          ↓        ↓
       profiles  rules/catalog → models
          ↓
-      reporters, exporters → models
+      reporters → models
+
+      exporters → utils
 ```
 
 - `models.py` imports nothing else from the package.
-- Scanners never import each other, reporters or the CLI.
+- Scanners never import reporters or the CLI. They import each other only for the placeholder check in
+  `scanners/manifests.py`.
+- `exporters/` reads a saved report through `utils/`, and imports nothing from the scan pipeline, since
+  the JSON schema is the contract between them.
 - Only `cli.py` knows about Typer. Only `reporters/terminal.py` and `cli.py` know about Rich.
 - Only `scanners/pdf.py` imports PyMuPDF, and only when a PDF appears. Only `scanners/image.py`
   imports Pillow, and it never lets Pillow decode pixels.

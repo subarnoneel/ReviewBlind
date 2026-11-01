@@ -1,0 +1,6 @@
+[project]
+name = "graph-contrast"
+version = "1.0.0"
+description = "Contrastive learning on citation graphs."
+authors = [{ name = "Anonymous Authors" }]
+dependencies = ["torch>=2.0", "numpy>=2.0"]

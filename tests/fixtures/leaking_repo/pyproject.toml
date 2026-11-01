@@ -1,0 +1,4 @@
+[project]
+name = "graph-contrast"
+version = "1.0.0"
+authors = [{ name = "Alice Example" }]

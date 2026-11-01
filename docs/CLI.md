@@ -1,6 +1,6 @@
 # CLI Reference
 
-> Status: `init`, `discover`, `scan` and `rules` work, with every flag shown here. `export` is planned.
+> Status: every command works, with every flag shown here.
 
 Examples use the fictional researcher **Dr. Alice Example** of Example University.
 
@@ -228,6 +228,8 @@ longer one.
 | `anonymous-github` | One term per line, with regular-expression syntax escaped |
 | `hido` | Currently identical to `plain`, because Hido does not document its term format ([D-22](DECISIONS.md#d-22-export-format-details)) |
 
+Lines end in LF on every platform, because Anonymous GitHub splits its input on LF alone.
+
 ```text
 github\.com/aliceexample
 Example University
@@ -237,14 +239,27 @@ aliceexample
 ```
 
 Anonymous GitHub compiles each term as a regular expression when it can, so an
-unescaped `.` or `(` would change what a term matches.
+unescaped `.` or `(` would change what a term matches. It also reads `left=>right` as "replace
+`left` with `right`", which would publish `right`, so `=>` is written as `=\>`.
+
+A report that cannot be read, has an unsupported `schema_version`, holds a value that cannot be one
+line of a list, or has no confirmed identities exits with code 2 and writes nothing. A saved report
+may be UTF-8 or carry a byte order mark, so one redirected by Windows PowerShell works.
 
 `export` does not refuse a report that still has blockers, because a mirror-based
 workflow may rely on term replacement. It warns on stderr if the report came from an
 incomplete scan.
 
-Binary files pass through a mirror unchanged. Term replacement does not fix PDF
-metadata, image metadata or embedded images.
+**A term list does not fix everything.** The report still lists these, so check them yourself:
+
+- Binary files pass through a mirror unchanged, so PDF metadata and text, image metadata and
+  embedded images stay as they are.
+- Institutional hostnames (RB202), scheduler values (RB205) and home paths with an unconfirmed
+  username (RB201) are not terms.
+- A name split across fields, as in `given-names` and `family-names` in `CITATION.cff`, or across a
+  line break, does not match its term.
+
+The list itself holds your identities, so keep it out of the artifact you share.
 
 ## `reviewblind rules [RULE_ID]`
 

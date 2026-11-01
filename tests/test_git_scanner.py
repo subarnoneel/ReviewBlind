@@ -208,6 +208,19 @@ def test_another_contributor_only_matters_on_a_public_repository(repo: Path) -> 
     )
 
 
+def test_a_neutral_identity_is_what_the_fix_asks_for_so_it_passes(repo: Path) -> None:
+    commit(repo, author=("Anonymous Authors", "anonymous@example.org"))
+    matched = {item.matched for item in findings(repo, Target.REPOSITORY)}
+    assert "Anonymous Authors" not in matched
+    assert "anonymous@example.org" not in matched
+
+
+def test_a_neutral_looking_value_holding_a_confirmed_identity_is_still_found(repo: Path) -> None:
+    commit(repo, author=("Alice Example authors", "alice@example.edu"))
+    matched = {item.matched for item in by_rule(findings(repo, Target.REPOSITORY), "RB402")}
+    assert "Alice Example authors" in matched
+
+
 @pytest.mark.parametrize(
     "bot",
     [
