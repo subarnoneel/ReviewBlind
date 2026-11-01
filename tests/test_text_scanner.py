@@ -396,14 +396,14 @@ def test_the_limit_constants_are_set() -> None:
 @pytest.mark.parametrize(
     ("name", "content", "reason"),
     [
-        ("analysis.ipynb", "{}", SkipReason.UNSUPPORTED_BINARY),
-        ("figure.pdf", b"%PDF-1.7", SkipReason.UNSUPPORTED_BINARY),
-        ("plot.png", b"\x89PNG", SkipReason.UNSUPPORTED_BINARY),
+        ("analysis.ipynb", "{}", SkipReason.CORRUPT),
+        ("figure.pdf", b"%PDF-1.7", SkipReason.CORRUPT),
+        ("plot.png", b"\x89PNG", SkipReason.CORRUPT),
         ("weights.bin", b"\x00\x01", SkipReason.UNSUPPORTED_BINARY),
         ("data.zip", b"PK", SkipReason.ARCHIVE_NOT_INSPECTED),
     ],
 )
-def test_files_no_scanner_can_read_make_the_scan_incomplete(
+def test_files_that_cannot_be_read_make_the_scan_incomplete(
     tmp_path: Path, name: str, content: str | bytes, reason: SkipReason
 ) -> None:
     # FR-COMP-2: never claim to have inspected something that was not.

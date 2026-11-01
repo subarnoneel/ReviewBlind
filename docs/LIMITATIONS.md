@@ -69,6 +69,9 @@ as unconfirmed findings at the `repository` target.
 - Model weights, pickle files, HDF5 and other binary data formats. Metadata inside them can
   name the author.
 - PDF named destinations and hyperref citation keys, planned for 1.1.
+- PDF annotations, bookmarks and embedded file attachments.
+- Notebooks older than format version 4. They are reported as unreadable, and mark the scan incomplete.
+- Image metadata outside the fields listed in the requirements, such as camera maker notes.
 - Text in encodings other than UTF-8, which are treated as binary and reported.
 
 ### Beyond the repository

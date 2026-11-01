@@ -4,15 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 
-from reviewblind.models import (
-    Artifact,
-    ArtifactKind,
-    Detection,
-    EvidenceClass,
-    Location,
-    SkipReason,
-)
-from reviewblind.scanners.base import ScanContext
+from reviewblind.models import Artifact, ArtifactKind, Detection, SkipReason
+from reviewblind.scanners.base import ScanContext, file_fact
 
 _OS_FILE_NAMES = frozenset({".ds_store", "thumbs.db"})
 _MACOS_ARCHIVE_DIRECTORY = "__MACOSX"
@@ -24,20 +17,6 @@ def _os_metadata_path(relpath: str) -> str | None:
     if _MACOS_ARCHIVE_DIRECTORY in parts:
         return "/".join(parts[: parts.index(_MACOS_ARCHIVE_DIRECTORY) + 1])
     return relpath if parts[-1].lower() in _OS_FILE_NAMES else None
-
-
-def _fact(rule_id: str, path: str, evidence: str, message: str) -> Detection:
-    """A detection about a file itself, which has no identity attached to it."""
-    return Detection(
-        rule_id=rule_id,
-        artifact=path,
-        location=Location(path),
-        matched=path,
-        evidence=evidence,
-        message=message,
-        identity=None,
-        evidence_class=EvidenceClass.DIRECT,
-    )
 
 
 class PackagingScanner:
@@ -52,7 +31,7 @@ class PackagingScanner:
     def scan(self, artifact: Artifact, context: ScanContext) -> Iterator[Detection]:
         relpath = artifact.relpath
         if artifact.kind is ArtifactKind.REVIEWBLIND:
-            yield _fact(
+            yield file_fact(
                 "RB805",
                 relpath,
                 "This file lists author identities in plain text.",
@@ -62,17 +41,17 @@ class PackagingScanner:
         os_path = _os_metadata_path(relpath)
         if os_path is not None:
             # Its only meaning is that it should not ship, so it is not also an unreadable binary.
-            yield _fact("RB802", os_path, os_path, "Found operating-system metadata")
+            yield file_fact("RB802", os_path, os_path, "Found operating-system metadata")
         elif artifact.kind is ArtifactKind.BINARY:
             context.report_skip(relpath, SkipReason.UNSUPPORTED_BINARY, "unsupported binary format")
-            yield _fact(
+            yield file_fact(
                 "RB803", relpath, "Binary contents were not inspected.", "Found an unreadable file"
             )
         elif artifact.kind is ArtifactKind.ARCHIVE:
             context.report_skip(
                 relpath, SkipReason.ARCHIVE_NOT_INSPECTED, "archives are not unpacked"
             )
-            yield _fact(
+            yield file_fact(
                 "RB804", relpath, "Archive contents were not inspected.", "Found an archive"
             )
 
@@ -82,6 +61,6 @@ class GitDirectoryScanner:
 
     def scan(self, context: ScanContext) -> Iterable[Detection]:
         return [
-            _fact("RB801", path, path, "Found a Git directory")
+            file_fact("RB801", path, path, "Found a Git directory")
             for path in context.inventory.git_entries
         ]

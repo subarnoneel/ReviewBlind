@@ -124,9 +124,9 @@ Rule assignments are in [RULES.md](RULES.md).
 | FR-GIT-3 | MUST report each unique Git identity once, and mark the scan incomplete when Git is unavailable or refuses the repository |
 | FR-GIT-4 | MUST run Git only through the hardened runner in [ARCHITECTURE.md §8](ARCHITECTURE.md#8-running-git-safely) |
 | FR-NB-1 | `NotebookScanner` MUST parse `.ipynb` as JSON and inspect separately: Markdown cells, code cells, stream outputs, error tracebacks, `text/plain` outputs, notebook and kernel metadata, and VS Code and Colab metadata |
-| FR-NB-2 | MUST report the location as a JSON-style field, such as `output[7].traceback[3]` |
+| FR-NB-2 | MUST report the location as a JSON-style field, such as `cell[3].output[7].traceback[3]` |
 | FR-NB-3 | MUST report base64 binary output as REVIEW and MUST NOT OCR it |
-| FR-PDF-1 | `PdfScanner` MUST inspect Author, Creator, Producer, Subject, Keywords, XMP metadata, extractable page text and exposed URLs |
+| FR-PDF-1 | `PdfScanner` MUST inspect Author, Title, Creator, Producer, Subject, Keywords, XMP metadata, extractable page text and exposed URLs |
 | FR-PDF-2 | MUST NOT modify PDFs |
 | FR-PDF-3 | MUST mark encrypted or corrupt PDFs as skipped |
 | FR-IMG-1 | `ImageScanner` MUST inspect EXIF Artist, Copyright, ImageDescription, UserComment, GPS, camera owner fields, PNG text and iTXt, and software metadata |

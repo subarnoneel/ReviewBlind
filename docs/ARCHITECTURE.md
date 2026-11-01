@@ -65,7 +65,8 @@ cli → engine → scanners → matching → models
 - `models.py` imports nothing else from the package.
 - Scanners never import each other, reporters or the CLI.
 - Only `cli.py` knows about Typer. Only `reporters/terminal.py` and `cli.py` know about Rich.
-- Only `scanners/pdf.py` imports PyMuPDF. Only `scanners/image.py` imports Pillow.
+- Only `scanners/pdf.py` imports PyMuPDF, and only when a PDF appears. Only `scanners/image.py`
+  imports Pillow, and it never lets Pillow decode pixels.
 - Only `utils/git.py` starts a subprocess.
 
 ## 2. Repository layout
@@ -250,6 +251,19 @@ continues. Anything escaping the engine itself is an internal failure, exit code
 Scanning runs sequentially in 0.1.0. Determinism matters more than speed here, and
 results are sorted regardless.
 
+### Structured files
+
+Notebooks, PDFs and images have no useful line numbers, so each finding names a field instead, such as
+`cell[3].output[7].traceback[3]`, `PDF metadata: Author` or `EXIF Artist`. Spans are resolved within a
+field, since offsets in different fields are unrelated.
+
+- **Notebooks** are parsed as JSON. Colour codes are removed before matching, because IPython can place
+  one in the middle of a path or a name.
+- **PDFs** are opened from bytes already held within the size cap. MuPDF's own messages are turned off,
+  so a malformed file cannot print into a report.
+- **Images** are opened only to validate the header. A PNG's metadata is read straight from its chunks,
+  because Pillow's `getexif()` and `text` decode the whole image first. Decompressed text is capped.
+
 ### Classifying artifacts
 
 The checks run in this order, and the first match wins.
@@ -391,7 +405,8 @@ git --no-pager --no-optional-locks --no-replace-objects
 
 The child environment has every inherited `GIT_*` variable removed, then sets
 `GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0` and `GIT_NO_LAZY_FETCH=1`. Stdin is closed, each command has
-a timeout, and output is capped at 256 MiB, because a commit message can be any size. Calls never use a shell.
+a timeout, and output is capped at 256 MiB, because a commit message can be any size. Output is read in
+small pieces, since `read(limit)` would reserve the whole limit before reading anything. Calls never use a shell.
 
 The executable itself is found by searching absolute `PATH` entries outside the scan root, and is run by
 absolute path. Windows otherwise searches the current directory first, so a repository could run its own

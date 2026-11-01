@@ -23,3 +23,6 @@ All notable changes to this project are documented here. The format is based on
 - Manifest checks: `pyproject.toml`, `package.json`, `setup.cfg`, `setup.py`, `CITATION.cff`, and license and authors files.
 - `reviewblind discover`, which finds likely identities from Git, manifests and LaTeX, and writes nothing.
 - `reviewblind init`, which lets you confirm them, writes `.reviewblind.toml` and adds it to `.git/info/exclude`.
+- Notebook checks: cells, saved outputs, tracebacks and metadata, located by field.
+- PDF checks: metadata, XMP, page text and links.
+- Image checks: EXIF, GPS and PNG text, without decoding pixels, plus a manual-review finding for every image.

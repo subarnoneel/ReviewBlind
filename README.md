@@ -3,9 +3,8 @@
 **A deterministic, local-first CLI that preflights research repositories for accidental
 identity disclosure before double-anonymous peer review.**
 
-> **Status: pre-alpha, and not ready for real submissions.** `init`, `discover`, `scan` and `rules` work on text
-> files, file names, manifests, Git metadata and packaging. Notebooks, PDFs and images are reported as skipped, and
-> `export` is planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: pre-alpha, and not yet tested on real research repositories.** `init`, `discover`, `scan` and `rules` work
+> on every file type listed below. `export` is planned. Progress is tracked in the [roadmap](docs/ROADMAP.md).
 
 ## Why
 
@@ -41,7 +40,7 @@ Example finding:
 ```text
 WARNING  RB502  HIGH
 notebooks/error_analysis.ipynb
-output[7].traceback[3]
+cell[3].output[7].traceback[3]
 
 /home/aliceexample/miniconda3/envs/nlp/...
 

@@ -12,6 +12,7 @@ import os
 import socket
 import sys
 import time
+import tracemalloc
 from dataclasses import replace
 from pathlib import Path
 
@@ -477,6 +478,20 @@ def test_a_flood_of_matches_does_not_exhaust_the_scan(tmp_path: Path) -> None:
     report = scan(tmp_path)
     assert len(report.result.findings) <= 1000
     assert report.result.incomplete
+
+
+def test_a_size_cap_does_not_allocate_its_own_size(tmp_path: Path) -> None:
+    # read(limit + 1) reserves the whole limit in advance, so a cap meant to protect memory cost
+    # 256 MiB for every Git command, on any repository, however small.
+    root = init_repo(tmp_path / "repo", {"a.txt": "Alice Example\n", "b.bin": b"\x00\x01"})
+    write_tree(root, {"c.ipynb": '{"cells": []}', "d.png": b"\x89PNG\r\n\x1a\n"})
+    tracemalloc.start()
+    try:
+        scan(root)
+        _current, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 40 * 1024 * 1024
 
 
 # T-13: no network, and T-15: no planted executables

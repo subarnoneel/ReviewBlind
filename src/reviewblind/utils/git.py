@@ -19,6 +19,7 @@ from pathlib import Path
 
 GIT_TIMEOUT_SECONDS = 60
 MAX_GIT_OUTPUT_BYTES = 256 * 1024 * 1024  # a hostile commit message could be any size
+_READ_CHUNK_BYTES = 64 * 1024
 
 _HARDENING = (
     "--no-pager",
@@ -144,6 +145,18 @@ def _environment() -> dict[str, str]:
     return environment
 
 
+def _read_within_limit(process: subprocess.Popen[bytes], name: str) -> bytes:
+    """Read in pieces, because `read(limit + 1)` allocates the whole limit before reading."""
+    received = bytearray()
+    pipe = process.stdout
+    while pipe is not None and (chunk := pipe.read(_READ_CHUNK_BYTES)):
+        received += chunk
+        if len(received) > MAX_GIT_OUTPUT_BYTES:
+            process.kill()
+            raise GitError(f"git {name} produced too much output")
+    return bytes(received)
+
+
 class GitRepository:
     """Read-only access to the repository containing a directory."""
 
@@ -175,11 +188,7 @@ class GitRepository:
                 timer = threading.Timer(GIT_TIMEOUT_SECONDS, stop)
                 timer.start()
                 try:
-                    pipe = process.stdout
-                    stdout = pipe.read(MAX_GIT_OUTPUT_BYTES + 1) if pipe is not None else b""
-                    if len(stdout) > MAX_GIT_OUTPUT_BYTES:
-                        process.kill()
-                        raise GitError(f"git {command[0]} produced too much output")
+                    stdout = _read_within_limit(process, command[0])
                     process.wait()
                 finally:
                     timer.cancel()

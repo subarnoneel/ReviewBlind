@@ -280,7 +280,7 @@ suggested action shown with a finding.
 ### PDF rules
 
 **RB601 — Identity in PDF metadata** ◆
-- *Detects:* a confirmed identity in Author, Creator, Producer, Subject, Keywords or XMP metadata. A non-placeholder `Author` is reported even when unconfirmed.
+- *Detects:* a confirmed identity in Author, Title, Creator, Producer, Subject, Keywords or XMP metadata. A non-placeholder `Author` is reported even when unconfirmed.
 - *Why:* metadata is hidden from the page, and a mirror cannot rewrite binary files.
 - *Fix:* re-export the PDF with metadata removed.
 
