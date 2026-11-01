@@ -101,7 +101,7 @@ support.
 | `suppressed` | array | Findings hidden by `[[allow]]`, with the reason given |
 
 `location.line` and `location.column` are 1-based and may be `null`. `location.field` holds a
-structured location, such as `output[7].traceback[3]` or `PDF metadata: Author`.
+structured location, such as `cell[3].output[7].traceback[3]` or `PDF metadata: Author`.
 `location.git_commit` is the first commit in which the Git finding was seen.
 
 `matched` is the exact matched value, and `[[allow]]` compares against it. `evidence` is a

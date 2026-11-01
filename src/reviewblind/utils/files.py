@@ -11,6 +11,7 @@ from pathlib import Path
 from reviewblind.models import ArtifactKind
 
 SNIFF_BYTES = 8192
+READ_CHUNK_BYTES = 1024 * 1024
 
 _MANIFEST_NAMES = frozenset(
     {"pyproject.toml", "package.json", "setup.py", "setup.cfg", "citation.cff"}
@@ -101,10 +102,19 @@ def read_head(path: Path) -> bytes:
 
 
 def read_limited(path: Path, limit: int) -> bytes | None:
-    """The whole file, or `None` if it is larger than `limit`, however large it claims to be."""
+    """The whole file, or `None` if it is larger than `limit`, however large it claims to be.
+
+    Read in pieces, because `read(limit + 1)` allocates that much memory before reading anything.
+    """
+    chunks = []
+    total = 0
     with path.open("rb") as file:
-        content = file.read(limit + 1)
-    return None if len(content) > limit else content
+        while chunk := file.read(READ_CHUNK_BYTES):
+            total += len(chunk)
+            if total > limit:
+                return None
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def decode_text(content: bytes) -> str:

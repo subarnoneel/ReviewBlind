@@ -528,3 +528,54 @@ an institution, rather than the author.
 
 **Decision:** with no candidates, or none accepted under `--yes`, `init` writes nothing and exits with code 2. In interactive
 use, accepting an empty selection is refused.
+
+### D-67: Notebook fields include the cell
+
+**Issue:** spec section 11 shows `output[7].traceback[3]`, but each cell numbers its own outputs, so that alone does not
+say where to look.
+
+**Decision:** `cell[3].output[7].traceback[3]`.
+
+### D-68: PyMuPDF loads only when a PDF appears
+
+**Issue:** it is the heaviest dependency, and importing it can crash on macOS when warnings are errors (D-39). Commands
+such as `rules` have no need for it.
+
+**Decision:** it is imported on first use, inside a guard that ignores its import-time warnings. A test imports the CLI and
+confirms PyMuPDF is not loaded, and another scans a PDF under `python -W error`.
+
+### D-69: PNG metadata is read directly
+
+**Issue:** the plan was to ask Pillow, without loading pixels. A test found that Pillow's `getexif()` on a PNG silently
+decodes the whole image, so a 101-byte file claiming 60,000 by 60,000 pixels would have tried to allocate about 10 GB.
+
+**Decision:** PNG chunks are read straight from the file, which also finds text stored after the image data. The test's
+tripwire is on Pillow's actual decoder, and covers JPEG, PNG, TIFF and WebP. Other formats still use Pillow's `getexif()`,
+which that test shows does not decode.
+
+### D-70: PDF titles are inspected
+
+**Issue:** spec section 26 omits Title, but LaTeX templates and export tools often put the file path or author there.
+
+**Decision:** Title is included in RB601.
+
+### D-71: Older notebook formats are reported rather than read
+
+**Issue:** format 3 keeps cells in `worksheets`, and is rare in current work.
+
+**Decision:** a notebook without a `cells` list is reported as unreadable, which marks the scan incomplete. It is not silently
+treated as empty.
+
+### D-72: A size cap must not allocate its own size
+
+**Issue:** D-60's cap used `read(limit + 1)`, and Python reserves that buffer before reading. Every Git command allocated 256 MiB,
+and every file read 50 MiB, on any repository however small. Discovered by measuring memory while testing D-69.
+
+**Decision:** read in small pieces. A scan of a tiny repository went from a 268 MB peak to about 1 MB, a Git command from 63 ms to
+16 ms, and the test suite took about half the time with more tests. A test now fails if the peak rises above 40 MB.
+
+### D-73: Every image gets RB703, even an unreadable one
+
+**Issue:** a corrupt or oversized image is still a file a reviewer might open.
+
+**Decision:** RB703 is always raised, alongside any skip. It does not mark the scan incomplete by itself (D-14), but the skip does.

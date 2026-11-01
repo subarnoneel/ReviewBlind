@@ -168,7 +168,7 @@ anonymous mirror to replace it.
 
 WARNING  RB502  HIGH
 notebooks/error_analysis.ipynb
-output[7].traceback[3]
+cell[3].output[7].traceback[3]
 
 Found a personal home path:
 /home/aliceexample/miniconda3/envs/nlp/...

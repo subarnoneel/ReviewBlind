@@ -284,8 +284,8 @@ CATALOG: tuple[Rule, ...] = (
         "RB601",
         "Identity in PDF metadata",
         _B,
-        detects="A confirmed identity in Author, Creator, Producer, Subject, Keywords or XMP "
-        "metadata. A non-placeholder Author is reported even when unconfirmed.",
+        detects="A confirmed identity in Author, Title, Creator, Producer, Subject, Keywords or "
+        "XMP metadata. A non-placeholder Author is reported even when unconfirmed.",
         why="Metadata is hidden from the page, and a mirror cannot rewrite binary files.",
         fix="Re-export the PDF with metadata removed.",
         container=True,

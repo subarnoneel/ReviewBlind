@@ -26,6 +26,7 @@ The objective is to prove three things:
 | `test_notebook_scanner.py` | Notebooks | 8 |
 | `test_pdf_scanner.py` | PDF | 6 |
 | `test_image_scanner.py` | Images | 5 |
+| `test_malformed.py` | The broken-file repository | Added in M6 |
 | `test_profiles.py` | Severity for each target | 4 |
 | `test_integration.py` | End to end, including the benchmark | 5 |
 | **Subtotal** | | **73** |
@@ -176,7 +177,8 @@ A manifest in `tests/fixtures/leaking_repo/expected.toml` holds this table in ma
 
 **`malformed_repo` contains:** a truncated notebook, broken TOML, invalid YAML in
 `CITATION.cff`, a `setup.py` with a syntax error, very deeply nested JSON, a corrupt PDF, an
-encrypted PDF, a corrupt PNG, a binary file named `.py`, and a non-UTF-8 text file.
+encrypted PDF, a corrupt PNG, a binary file named `.py`, and a non-UTF-8 text file. Text-like cases are
+committed, and `test_malformed.py` adds generated and very large ones at test time.
 
 ### Fixtures built at test time
 

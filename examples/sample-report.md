@@ -59,7 +59,7 @@
 
 ### RB502 - Identity in notebook output/traceback
 
-- **Location:** `notebooks/error_analysis.ipynb`, `output[7].traceback[3]`
+- **Location:** `notebooks/error_analysis.ipynb`, `cell[3].output[7].traceback[3]`
 - **Confidence:** HIGH
 - **Evidence:** `/home/aliceexample/miniconda3/envs/nlp/...`
 - **Reason:** Outputs remain stored in the `.ipynb` JSON even when the source cell itself is clean.
