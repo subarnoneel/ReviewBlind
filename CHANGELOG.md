@@ -14,7 +14,7 @@ All notable changes to this project are documented here. The format is based on
 - Core model: data types, the 33-rule catalogue, severity resolution, identity matching, stable
   fingerprints, and config reading, validation and writing.
 - `reviewblind scan` for text files and file names, with `--target`, `--config`, `--fail-on` and `--strict`, and
-  `reviewblind rules`. Notebooks, PDFs, images and Git history are not inspected yet, and are reported as skipped.
+  `reviewblind rules`.
 - A hardened Git runner that cannot be made to run repository-defined code.
 - JSON and Markdown reports with `--format` and `--output`, byte-identical across runs.
 - Exact `[[allow]]` suppressions, which stay visible in the JSON report.
@@ -26,3 +26,9 @@ All notable changes to this project are documented here. The format is based on
 - Notebook checks: cells, saved outputs, tracebacks and metadata, located by field.
 - PDF checks: metadata, XMP, page text and links.
 - Image checks: EXIF, GPS and PNG text, without decoding pixels, plus a manual-review finding for every image.
+- `reviewblind export`, which turns a JSON report into a term list for Anonymous GitHub, Hido or a plain file.
+- A benchmark of 33 planted leaks, one for each rule, and a corpus of lookalikes that must stay quiet.
+
+### Fixed
+
+- A Git history under a neutral identity such as `Anonymous Authors` is no longer a warning on `repository`.

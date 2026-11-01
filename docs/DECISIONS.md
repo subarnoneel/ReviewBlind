@@ -196,9 +196,11 @@ same value twice in one file therefore shares a fingerprint. Full detail is in
 
 **Issue:** spec §32 shows a plain list. The spec does not cover ordering or escaping.
 
-**Evidence:** Anonymous GitHub's `src/core/anonymize-utils.ts` (checked October 2026) compiles each term as a
-case-insensitive, word-bounded regular expression when it can, applies terms in list order, and
-passes binary files through unchanged.
+**Evidence:** Anonymous GitHub's `src/core/anonymize-utils.ts` and `term-matching.ts` (read November 2026) compile
+each term as a case-insensitive regular expression when they can, apply terms in list order, and pass binary files
+through unchanged. A boundary is added only where a term has an ASCII word character at that edge, and a second
+pass ignores diacritics, so non-ASCII names and terms ending in punctuation are replaced. Its form takes one
+term per line, split on LF. See also D-74.
 
 **Decision:** terms go longest first, so a short term cannot break a longer one. `anonymous-github`
 escapes only regex syntax characters, and `plain` stays literal. Because binary files pass through
@@ -579,3 +581,46 @@ and every file read 50 MiB, on any repository however small. Discovered by measu
 **Issue:** a corrupt or oversized image is still a file a reviewer might open.
 
 **Decision:** RB703 is always raised, alongside any skip. It does not mark the scan incomplete by itself (D-14), but the skip does.
+
+### D-74: `=>` is escaped for Anonymous GitHub
+
+**Issue:** Anonymous GitHub reads `left=>right` as "replace `left` with `right`". This syntax appeared after D-22 was first
+checked. A term containing `=>` would be cut short, and the rest of it written into the anonymized output.
+
+**Decision:** `anonymous-github` writes `=\>`, which still matches `=>`. `plain` and `hido` stay literal.
+
+**Not verified:** this was checked in JavaScript's regular expression engine with a script following the rules in their
+source. Anonymous GitHub's own code, which first tries RE2, has not been run.
+
+### D-75: `export` refuses rather than repairs
+
+**Issue:** the list is read one term per line, so a line break in a value would make two terms, and an escape sequence would
+reach the terminal. An empty list would look like a finished job.
+
+**Decision:** any value that `sanitize_text` would change is refused, along with a report that has no confirmed
+identities. Both exit with code 2. Joiners stay, since they are part of names in Bangla and other scripts. Silently dropping a
+term would be worse: the author would believe it had been replaced.
+
+### D-76: Term lists hold only what the spec lists
+
+**Issue:** RB202 hostnames such as `cluster.cs.example.edu` stay visible through a mirror, because the list has only confirmed
+identities and RB105, RB203 and RB204 URLs.
+
+**Decision:** keep to the spec. Replacing an institution's domain can also rewrite links to its public work, and the report
+still shows RB202 as a WARNING. [CLI.md](CLI.md#reviewblind-export-report) says so, and a test states exactly what remains.
+
+### D-77: Neutral Git identities are not findings
+
+**Issue:** RB402 and RB403 tell authors to publish a fresh history under a neutral identity, but on `repository` a value such as
+`Anonymous Authors` was still a WARNING, so following the fix could never clear the finding. The benchmark's clean history found
+this.
+
+**Decision:** unconfirmed values use the same placeholder check as RB301 and RB303. A value containing a confirmed identity is
+still reported, and so is any other co-author.
+
+### D-78: Hido remains unverified
+
+**Issue:** M7 asks for a real Hido dry-run and a check of what a clone contains (D-22, D-38), which needs the project owner's account.
+
+**Decision:** `--format hido` stays identical to `plain`, and D-38's assumption stands, until that check is done. M7's
+last exit criterion stays open, and [LIMITATIONS.md](LIMITATIONS.md#mirror-workflows) says so.

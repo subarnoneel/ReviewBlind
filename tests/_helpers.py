@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import io
 import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import pytest
+from PIL import ExifTags, Image
 
 from reviewblind.config import Config, IdentityConfig, ScanSettings
 from reviewblind.engine import run_scan
 from reviewblind.models import Finding, ScanReport, Target
+from reviewblind.scanners.pdf import load_pymupdf
 
 PERSONA = Config(
     identity=IdentityConfig(
@@ -91,6 +95,54 @@ def init_repo(root: Path, files: Mapping[str, str | bytes] | None = None) -> Pat
     git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "Initial commit")
     return root
+
+
+def make_pdf(
+    *,
+    metadata: dict[str, str] | None = None,
+    xmp: str | None = None,
+    pages: tuple[str, ...] = ("Some ordinary content",),
+    link: str | None = None,
+    encrypted: bool = False,
+) -> bytes:
+    pymupdf: Any = load_pymupdf()
+    document = pymupdf.open()
+    for text in pages:
+        page = document.new_page()
+        page.insert_text((72, 72), text)
+        if link:
+            page.insert_link(
+                {"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(72, 80, 200, 100), "uri": link}
+            )
+    document.set_metadata(metadata or {})
+    if xmp:
+        document.set_xml_metadata(xmp)
+    options = {"encryption": pymupdf.PDF_ENCRYPT_AES_256, "user_pw": "u", "owner_pw": "o"}
+    content: bytes = document.tobytes(**(options if encrypted else {}))
+    document.close()
+    return content
+
+
+def jpeg(
+    tags: dict[int, str | bytes] | None = None,
+    exif_ifd: dict[int, str | bytes] | None = None,
+    *,
+    gps: bool = False,
+    comment: bytes | None = None,
+) -> bytes:
+    exif = Image.Exif()
+    for tag, value in (tags or {}).items():
+        exif[tag] = value
+    if exif_ifd:
+        details = exif.get_ifd(ExifTags.IFD.Exif)
+        details.update(exif_ifd)
+    if gps:
+        location = exif.get_ifd(ExifTags.IFD.GPSInfo)
+        location[ExifTags.GPS.GPSLatitudeRef] = "N"
+    buffer = io.BytesIO()
+    options = {"comment": comment} if comment else {}
+    Image.new("RGB", (4, 4)).save(buffer, format="JPEG", exif=exif, **options)
+    return buffer.getvalue()
 
 
 def symlink_or_skip(link: Path, target: Path, *, directory: bool = False) -> None:

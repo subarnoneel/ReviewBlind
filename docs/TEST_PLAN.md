@@ -37,7 +37,7 @@ The objective is to prove three things:
 | `test_allowlist.py` | Exact suppressions | Added in M3 |
 | `test_rules.py` | Catalogue integrity | 3 |
 | `test_reporters.py` | Terminal, JSON, Markdown | 6 |
-| `test_exporters.py` | Term lists | 4 |
+| `test_exporters.py` | Term lists, and hostile reports (T-14) | 4 |
 | `test_cli.py` | Commands, flags, exit codes | 8 |
 | `test_safety.py` | Security properties | 12 |
 | **Total** | | **127** |
@@ -85,6 +85,11 @@ The objective is to prove three things:
 
 - Two runs on the same input produce byte-identical JSON.
 - Shuffling file-system enumeration does not change the output.
+
+### Term lists
+
+An exported list is applied to a copy of the benchmark, as a proxy would, and the repository is scanned again. The
+test states exactly which confirmed findings remain, and so what a term list cannot fix.
 
 ## Safety tests
 
@@ -158,7 +163,10 @@ It plants **one leak per rule, 33 in total**, exceeding the original minimum of 
 | L32 | RB804 | `data/raw.zip` | The file itself |
 | L33 | RB805 | `.reviewblind.toml` | Tracked config |
 
-A manifest in `tests/fixtures/leaking_repo/expected.toml` holds this table in machine-readable form.
+A manifest in `tests/fixtures/leaking_repo/expected.toml` holds this table in machine-readable form, with each
+severity written out by hand from [RULES.md](RULES.md) rather than read from the catalog, so a mistake in the
+catalog fails instead of being repeated. A test keeps the manifest and this table in step, and another fails on
+anything found that was not planted.
 
 ## Fixtures
 
@@ -185,7 +193,8 @@ committed, and `test_malformed.py` adds generated and very large ones at test ti
 Some fixtures cannot or should not be committed. `tests/conftest.py` builds them in `tmp_path`:
 
 - **Git history:** a repository cannot contain a nested `.git`.
-- **PDFs and images:** created with PyMuPDF and Pillow, so the repository holds no opaque binaries.
+- **PDFs, images and other binaries:** created at test time, so the repository holds no opaque files. `.DS_Store`
+  is also built here, since this repository's own `.gitignore` excludes it.
 - **Symlinks:** these do not survive checkout on all platforms.
 
 Every committed fixture file uses only the Alice Example persona and `example.edu`, which is a

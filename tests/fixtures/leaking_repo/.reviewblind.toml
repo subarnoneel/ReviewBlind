@@ -1,0 +1,8 @@
+# The fictional author of this benchmark. Committing this file is itself one of the planted leaks.
+version = 1
+
+[identity]
+names = ["Alice Example"]
+emails = ["alice@example.edu"]
+usernames = ["aliceexample"]
+affiliations = ["Example University"]

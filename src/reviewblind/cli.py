@@ -22,6 +22,7 @@ from reviewblind.config import (
 )
 from reviewblind.discovery import Candidate, Discovery, discover
 from reviewblind.engine import compute_exit_code, run_scan
+from reviewblind.exporters.terms import ReportError, TermFormat, read_report, render_terms
 from reviewblind.initializer import ExcludeResult, add_to_exclude_file, is_tracked
 from reviewblind.models import Confidence, IdentityKind, ScanReport, Severity, Target
 from reviewblind.reporters.json import render_discovery_json, render_json
@@ -106,8 +107,7 @@ def _write_stdout(document: str) -> None:
     sys.stdout.flush()
 
 
-def _write_report(path: Path, document: str, root: Path) -> None:
-    """Write a report file. It lists author identities, so a path inside the scan is flagged."""
+def _write_private_file(path: Path, document: str) -> None:
     # A symlink planted in the repository could otherwise redirect the write (threat T-06).
     if path.is_symlink():
         _exit_with_error(f"refusing to write through a symbolic link: {path}")
@@ -115,6 +115,11 @@ def _write_report(path: Path, document: str, root: Path) -> None:
         atomic_write(path, document.encode("utf-8"))
     except OSError as error:
         _exit_with_error(f"cannot write {path}: {error.strerror or error}")
+
+
+def _write_report(path: Path, document: str, root: Path) -> None:
+    """Write a report file. It lists author identities, so a path inside the scan is flagged."""
+    _write_private_file(path, document)
     _error(f"wrote the report to {path}")
     if path.resolve().is_relative_to(root):
         _error(
@@ -198,6 +203,42 @@ def scan(
     else:
         _write_stdout(rendered)
     raise typer.Exit(compute_exit_code(report.result, Severity[fail_on.name], strict=strict))
+
+
+@app.command()
+def export(
+    report: Annotated[Path, typer.Argument(help="A JSON report from `reviewblind scan`.")],
+    term_format: Annotated[
+        TermFormat, typer.Option("--format", help="Who will read the term list.")
+    ] = TermFormat.ANONYMOUS_GITHUB,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write the term list to a file.")
+    ] = None,
+) -> None:
+    """Turn a JSON report into a term list for an anonymization proxy."""
+    _prepare_streams()
+    try:
+        source = read_report(report)
+        document = render_terms(source.terms, term_format)
+    except ReportError as error:
+        _exit_with_error(str(error))
+    except Exception as error:
+        _exit_with_error(
+            f"internal error: {type(error).__name__}: {error}. This is a bug in ReviewBlind. "
+            "If you report it, please reproduce it without your real identities.",
+            EXIT_INTERNAL,
+        )
+    if not source.complete:
+        _error(
+            "warning: this report is from an incomplete scan, so the list may be missing terms "
+            "that only appear in what was skipped."
+        )
+    if output is None:
+        _write_stdout(document)
+        return
+    _write_private_file(output, document)
+    _error(f"wrote the term list to {output}")
+    _error("This file lists your identities. Do not include it in the artifact you share.")
 
 
 @app.command()

@@ -174,7 +174,7 @@ Rule assignments are in [RULES.md](RULES.md).
 | FR-EXP-3 | MUST order terms longest first, breaking ties lexicographically |
 | FR-EXP-4 | The `anonymous-github` format MUST escape regular-expression syntax so that each term matches literally |
 | FR-EXP-5 | MUST NOT generate Git rewrite rules |
-| FR-EXP-6 | MUST exit with code 2 for an unreadable report or unsupported `schema_version` |
+| FR-EXP-6 | MUST exit with code 2 for an unreadable report, an unsupported `schema_version`, a value that cannot be one line of a term list, or a report with no confirmed identities |
 | FR-EXP-7 | MUST warn on stderr when the report is from an incomplete scan |
 
 ### 4.10 Rule documentation (`rules`)

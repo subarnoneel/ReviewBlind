@@ -12,33 +12,11 @@ from typing import Any
 import pytest
 from PIL import ExifTags, Image, ImageFile, PngImagePlugin
 
-from _helpers import PERSONA, findings, rules_found, scan, write_tree
+from _helpers import PERSONA, findings, jpeg, rules_found, scan, write_tree
 from reviewblind.config import ScanSettings
 from reviewblind.models import Confidence, Finding, Severity, SkipReason, Target
 from reviewblind.scanners import image as image_module
 from reviewblind.scanners.image import png_text_chunks
-
-
-def jpeg(
-    tags: dict[int, str | bytes] | None = None,
-    exif_ifd: dict[int, str | bytes] | None = None,
-    *,
-    gps: bool = False,
-    comment: bytes | None = None,
-) -> bytes:
-    exif = Image.Exif()
-    for tag, value in (tags or {}).items():
-        exif[tag] = value
-    if exif_ifd:
-        details = exif.get_ifd(ExifTags.IFD.Exif)
-        details.update(exif_ifd)
-    if gps:
-        location = exif.get_ifd(ExifTags.IFD.GPSInfo)
-        location[ExifTags.GPS.GPSLatitudeRef] = "N"
-    buffer = io.BytesIO()
-    options = {"comment": comment} if comment else {}
-    Image.new("RGB", (4, 4)).save(buffer, format="JPEG", exif=exif, **options)
-    return buffer.getvalue()
 
 
 def png(*chunks: tuple[str, str]) -> bytes:

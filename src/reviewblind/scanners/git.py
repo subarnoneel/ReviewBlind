@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from reviewblind.matching import resolve_overlaps
 from reviewblind.models import Detection, EvidenceClass, Location, Severity, SkipReason
 from reviewblind.scanners.base import ScanContext, confirmed_url_identity
+from reviewblind.scanners.manifests import FieldKind, ManifestField, is_placeholder
 from reviewblind.utils.git import Commit, GitError, GitRepository
 from reviewblind.utils.text import comparison_key, excerpt
 
@@ -142,17 +143,24 @@ class GitScanner:
                 ],
                 commit.sha,
             )
-        yield from self._people(names, "RB402", "Found an author or committer", context)
-        yield from self._people(emails, "RB403", "Found an author or committer email", context)
+        yield from self._people(
+            names, "RB402", FieldKind.PERSON, "Found an author or committer", context
+        )
+        yield from self._people(
+            emails, "RB403", FieldKind.EMAIL, "Found an author or committer email", context
+        )
         yield from self._messages(commits, context)
 
     @staticmethod
     def _people(
-        seen: dict[str, _Seen], rule_id: str, label: str, context: ScanContext
+        seen: dict[str, _Seen], rule_id: str, kind: FieldKind, label: str, context: ScanContext
     ) -> Iterator[Detection]:
         for item in seen.values():
             matches = context.matcher.find(item.value)
             longest = max(matches, key=lambda match: match.end - match.start, default=None)
+            # A neutral identity is the fix these rules ask for, so it must be able to pass.
+            if longest is None and is_placeholder(ManifestField(kind, item.value, GIT_PATH)):
+                continue
             yield Detection(
                 rule_id=rule_id,
                 artifact=GIT_PATH,

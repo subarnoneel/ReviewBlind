@@ -105,6 +105,9 @@ as unconfirmed findings at the `repository` target.
   cannot verify that. Hido, for example, lets reviewers `git clone`, and its documentation does not say what
   a clone contains. Clone your own anonymized link and run `git log` on it.
 - Mirrors may not rewrite everything. Hido, for example, does not recurse into submodules.
+- An exported term list leaves out institutional hostnames, scheduler values and unconfirmed usernames in home
+  paths, and it cannot match a name split across fields or lines. See [CLI.md](CLI.md#reviewblind-export-report).
+- `--format hido` has not been tried against a real Hido dry-run, and Hido does not document its term format.
 - Always open the anonymized URL and check it yourself before submitting.
 
 ## Security limitations

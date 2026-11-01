@@ -1,0 +1,299 @@
+# The planted leaks: docs/TEST_PLAN.md in machine-readable form, one for each rule.
+#
+# Severities are written out by hand from docs/RULES.md rather than read from rules/catalog.py, so a
+# mistake in the catalog fails here instead of being repeated. A leak counts as found only if `rule`
+# fires on `path`, at this severity on each target, and its matched value contains `matched`.
+#
+# Why some are not simply the rule's base severity:
+#   L07, L09, L21, L22 are indirect evidence, so a home path or service namespace is a WARNING.
+#   L16 to L19 are BLOCKER on archive, since nothing excludes .git and it would be packaged.
+#   L33 is BLOCKER everywhere, since the config is tracked by Git.
+
+[[leak]]
+id = "L01"
+rule = "RB101"
+path = "README.md"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L02"
+rule = "RB102"
+path = "README.md"
+matched = "alice@example.edu"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L03"
+rule = "RB103"
+path = "scripts/train.py"
+matched = "aliceexample"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L04"
+rule = "RB104"
+path = "docs/setup.md"
+matched = "Example University"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L05"
+rule = "RB105"
+path = "README.md"
+matched = "github.com/aliceexample"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L06"
+rule = "RB106"
+path = "data/aliceexample_results.csv"
+matched = "aliceexample"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L07"
+rule = "RB201"
+path = "configs/paths.yaml"
+matched = "/home/aliceexample"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L08"
+rule = "RB202"
+path = "scripts/fetch.sh"
+matched = "cluster.cs.example.edu"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L09"
+rule = "RB203"
+path = "configs/tracking.yaml"
+matched = "wandb.ai/aliceexample/proj"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L10"
+rule = "RB204"
+path = "scripts/clone.sh"
+matched = "github.com/aliceexample/private-tools"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L11"
+rule = "RB205"
+path = "slurm/train.sbatch"
+matched = "a.example@cs.example.edu"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L12"
+rule = "RB301"
+path = "pyproject.toml"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L13"
+rule = "RB302"
+path = "package.json"
+matched = "aliceexample.github.io"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L14"
+rule = "RB303"
+path = "CITATION.cff"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L15"
+rule = "RB304"
+path = "LICENSE"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L16"
+rule = "RB401"
+path = ".git"
+matched = "github.com:aliceexample/paper"
+mirror = "INFO"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L17"
+rule = "RB402"
+path = ".git"
+matched = "Alice Example"
+mirror = "INFO"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L18"
+rule = "RB403"
+path = ".git"
+matched = "alice@example.edu"
+mirror = "INFO"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L19"
+rule = "RB404"
+path = ".git"
+matched = "Alice Example"
+mirror = "INFO"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L20"
+rule = "RB501"
+path = "notebooks/analysis.ipynb"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L21"
+rule = "RB502"
+path = "notebooks/analysis.ipynb"
+matched = "/home/aliceexample"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L22"
+rule = "RB503"
+path = "notebooks/analysis.ipynb"
+matched = "/home/aliceexample"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L23"
+rule = "RB504"
+path = "notebooks/analysis.ipynb"
+mirror = "REVIEW"
+archive = "REVIEW"
+repository = "REVIEW"
+
+[[leak]]
+id = "L24"
+rule = "RB601"
+path = "figures/architecture.pdf"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L25"
+rule = "RB602"
+path = "figures/poster.pdf"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L26"
+rule = "RB701"
+path = "figures/plot.jpg"
+matched = "Alice Example"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
+
+[[leak]]
+id = "L27"
+rule = "RB702"
+path = "figures/field-site.jpg"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L28"
+rule = "RB703"
+path = "figures/team-photo.png"
+mirror = "REVIEW"
+archive = "REVIEW"
+repository = "REVIEW"
+
+[[leak]]
+id = "L29"
+rule = "RB801"
+path = ".git"
+mirror = "INFO"
+archive = "BLOCKER"
+repository = "INFO"
+
+[[leak]]
+id = "L30"
+rule = "RB802"
+path = ".DS_Store"
+mirror = "WARNING"
+archive = "WARNING"
+repository = "WARNING"
+
+[[leak]]
+id = "L31"
+rule = "RB803"
+path = "results/model-output.bin"
+mirror = "REVIEW"
+archive = "REVIEW"
+repository = "REVIEW"
+
+[[leak]]
+id = "L32"
+rule = "RB804"
+path = "data/raw.zip"
+mirror = "REVIEW"
+archive = "REVIEW"
+repository = "REVIEW"
+
+[[leak]]
+id = "L33"
+rule = "RB805"
+path = ".reviewblind.toml"
+mirror = "BLOCKER"
+archive = "BLOCKER"
+repository = "BLOCKER"
