@@ -703,3 +703,28 @@ def test_discover_writes_nothing(tmp_path: Path) -> None:
     before = snapshot()
     runner.invoke(cli.app, ["discover", str(root), "--include-env"])
     assert snapshot() == before
+
+
+# Found on real repositories
+
+
+@pytest.mark.parametrize(
+    "holder",
+    [
+        "Alice Example, Bob Coauthor, Carol Placeholder",
+        "Alice Example, Bob Coauthor and Carol Placeholder",
+        "Alice Example & Bob Coauthor; Carol Placeholder",
+    ],
+)
+def test_a_license_naming_several_people_gives_one_candidate_each(
+    tmp_path: Path, holder: str
+) -> None:
+    write_tree(tmp_path, {"LICENSE": f"Copyright (c) 2026 {holder}\n"})
+    found = {item.value for item in discover(tmp_path).candidates}
+    assert {"Alice Example", "Bob Coauthor", "Carol Placeholder"} <= found
+    assert holder not in found
+
+
+def test_a_company_suffix_does_not_split_a_holder(tmp_path: Path) -> None:
+    write_tree(tmp_path, {"LICENSE": "Copyright (c) 2026 Example Labs, Inc.\n"})
+    assert "Example Labs, Inc." in {item.value for item in discover(tmp_path).candidates}

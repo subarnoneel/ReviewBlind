@@ -32,3 +32,15 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 
 - A Git history under a neutral identity such as `Anonymous Authors` is no longer a warning on `repository`.
+- A config saved with a byte order mark, as PowerShell's `Out-File` writes it, can now be read.
+- Progress bars and other JSON notebook outputs are read as text, rather than reported as embedded binary output.
+- Default account names such as `C:\Users\hp` are no longer reported as personal home paths, and ImgBot is treated as a bot.
+- Default excludes such as `__pycache__` now apply anywhere in the tree.
+- Tracking is treated as unknown when a repository's Git index is missing, which keeps RB805 a blocker.
+- `discover` lists each person in a license that names several.
+
+### Changed
+
+- The name of a Colab account that ran a cell is reported by RB503 even when it is not in the config.
+- Kaggle input paths such as `/kaggle/input/datasets/<user>/` are reported by RB203, and in notebooks by RB501 to RB503.
+- A home path in a notebook cell is reported for review when its user is not in the config, as it is in other text files.

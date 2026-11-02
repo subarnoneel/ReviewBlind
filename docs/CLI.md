@@ -226,7 +226,7 @@ longer one.
 |---|---|
 | `plain` | One literal term per line |
 | `anonymous-github` | One term per line, with regular-expression syntax escaped |
-| `hido` | Currently identical to `plain`, because Hido does not document its term format ([D-22](DECISIONS.md#d-22-export-format-details)) |
+| `hido` | Identical to `plain`, because Hido reads terms literally ([D-78](DECISIONS.md#d-78-what-a-real-hido-check-showed)) |
 
 Lines end in LF on every platform, because Anonymous GitHub splits its input on LF alone.
 
@@ -252,12 +252,15 @@ incomplete scan.
 
 **A term list does not fix everything.** The report still lists these, so check them yourself:
 
-- Binary files pass through a mirror unchanged, so PDF metadata and text, image metadata and
-  embedded images stay as they are.
+- Term replacement does not reach inside binary files. Text on a PDF's pages and embedded images stay
+  as they are on Anonymous GitHub and Hido. Hido removed PDF metadata when tested, but Anonymous GitHub
+  passes binary files through unchanged, so do not rely on a mirror to clean them.
 - Institutional hostnames (RB202), scheduler values (RB205) and home paths with an unconfirmed
   username (RB201) are not terms.
-- A name split across fields, as in `given-names` and `family-names` in `CITATION.cff`, or across a
-  line break, does not match its term.
+- A name split across fields, as in `given-names` and `family-names` in `CITATION.cff`, does not match
+  its term. Nor does a name across a line break on Anonymous GitHub, although Hido matched that case.
+- Whole-word matching leaves near misses. When tested, Hido left `Alice Examples` for the term
+  `Alice Example`, so list the variants you use.
 
 The list itself holds your identities, so keep it out of the artifact you share.
 

@@ -10,7 +10,7 @@ from typing import Any
 
 from reviewblind.models import Confidence, Identity, IdentityKind
 from reviewblind.rules.registry import is_known_rule
-from reviewblind.utils.files import CONFIG_FILE_NAME, atomic_write
+from reviewblind.utils.files import CONFIG_FILE_NAME, atomic_write, decode_text
 
 CONFIG_VERSION = 1
 CONFIG_HEADER = (
@@ -23,11 +23,11 @@ MAX_CONFIG_BYTES = 1024 * 1024
 DEFAULT_MAX_TEXT_BYTES = 8 * 1024 * 1024
 DEFAULT_MAX_BINARY_BYTES = 50 * 1024 * 1024
 DEFAULT_EXCLUDE = (
-    ".venv/**",
-    "node_modules/**",
-    "__pycache__/**",
-    ".pytest_cache/**",
-    ".mypy_cache/**",
+    "**/.venv/**",
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
 )
 
 _IDENTITY_KEYS = {
@@ -209,8 +209,8 @@ def load_config(path: Path) -> Config:
     try:
         if path.stat().st_size > MAX_CONFIG_BYTES:
             raise ConfigError(f"{path} is too large to be a ReviewBlind config")
-        with path.open("rb") as file:
-            data = tomllib.load(file)
+        # Windows editors and PowerShell can add a byte order mark, which TOML does not allow.
+        data = tomllib.loads(decode_text(path.read_bytes()))
     except OSError as error:
         raise ConfigError(f"cannot read {path}: {error.strerror or error}") from error
     except (tomllib.TOMLDecodeError, UnicodeDecodeError, RecursionError) as error:

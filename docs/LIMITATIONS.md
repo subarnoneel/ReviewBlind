@@ -94,20 +94,39 @@ as unconfirmed findings at the `repository` target.
   intentional: `--strict` will fail until those files are removed from the artifact, or
   excluded because they will not ship.
 
+## Identities the tool cannot know about
+
+ReviewBlind looks for what you confirm, so these depend on you:
+
+- Discovery can only suggest what Git, manifests and LaTeX contain. If authors commit under a username such as
+  a gaming handle, their real names are not suggested. Add every author's name by hand.
+- Student and staff numbers, course codes, lab names and project codenames are found only if you list them. Add
+  them to `identity.aliases` or `identity.affiliations`.
+- Names match as whole words, so a first name alone or a name without its space is found only if you list it. A folder
+  such as `Alice-Code` needs the alias `Alice`, and `aliceexample` needs its own entry. `discover` offers an email's local
+  part at LOW confidence, so read those candidates rather than taking only the high ones.
+- An absolute path is reported as a home path only under `/home/`, `/Users/` or `C:\Users\`. A path such as
+  `D:\Study\Some University\my-name\` is found only if a part of it is a confirmed identity.
+- A file over `max_text_bytes` is skipped and marks the scan incomplete. Research datasets often are, so either raise
+  the limit or add them to `exclude` if they cannot identify you.
+
 ## Mirror workflows
 
-- Term replacement only rewrites text. Mirrors pass binary files through unchanged, so PDF
-  and image findings remain BLOCKER or WARNING under `--target mirror`.
+- Term replacement only rewrites text, so PDF and image findings remain BLOCKER or WARNING under `--target mirror`.
+  Anonymous GitHub passes binary files through unchanged. Hido removed a PDF's metadata when tested, but left the
+  text on its pages, and how it treats image metadata has not been tested.
 - If you rely on the mirror to replace a term in text, the finding stays in the report on
   every re-scan, because ReviewBlind inspects the source and not the mirror's output. Record
   that decision with an `[[allow]]` entry. Baselines, planned for 1.1, will make this easier.
 - `--target mirror` assumes the mirror hides your Git history, so Git findings are only INFO. ReviewBlind
-  cannot verify that. Hido, for example, lets reviewers `git clone`, and its documentation does not say what
-  a clone contains. Clone your own anonymized link and run `git log` on it.
+  cannot verify that for your link. A Hido clone, when tested, held one commit by `Anonymous` and none of the
+  original history, but that test repository had a single commit and a single branch. Clone your own anonymized link
+  and run `git log --all` on it.
 - Mirrors may not rewrite everything. Hido, for example, does not recurse into submodules.
 - An exported term list leaves out institutional hostnames, scheduler values and unconfirmed usernames in home
   paths, and it cannot match a name split across fields or lines. See [CLI.md](CLI.md#reviewblind-export-report).
-- `--format hido` has not been tried against a real Hido dry-run, and Hido does not document its term format.
+- Hido does not document its term format. `--format hido` is based on one test in November 2026
+  ([D-78](DECISIONS.md#d-78-what-a-real-hido-check-showed)), and could stop being right if the service changes.
 - Always open the anonymized URL and check it yourself before submitting.
 
 ## Security limitations

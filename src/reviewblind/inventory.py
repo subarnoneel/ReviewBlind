@@ -177,17 +177,28 @@ def build_inventory(root: Path, target: Target, settings: ScanSettings) -> Inven
     repository: GitRepository | None = None
     tracked: list[str] = []
     untracked: list[str] = []
+    index_is_empty = False
     try:
         repository = open_repository(root)
         if repository is not None:
             tracked = repository.tracked_files()
             untracked = repository.untracked_files()
+            index_is_empty = not tracked and repository.commit_count() > 0
     except GitError as error:
         repository = None
         git_failure = str(error)
 
+    if index_is_empty:
+        notes.append(
+            "Git lists no tracked files although this repository has commits, so its index is "
+            "probably missing and what is tracked cannot be told. `git reset` rebuilds the index "
+            "without changing your files."
+        )
     collector = _Collector(
-        root, settings, excludes, None if repository is None else frozenset(tracked)
+        root,
+        settings,
+        excludes,
+        None if repository is None or index_is_empty else frozenset(tracked),
     )
     if repository is not None and target is not Target.ARCHIVE:
         collector.visit_listed(tracked + untracked)

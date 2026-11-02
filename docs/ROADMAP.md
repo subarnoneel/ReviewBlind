@@ -95,7 +95,7 @@ allowlist handling, and the incomplete-scan state.
 - The complete safety test suite passes on all operating systems.
 - A real Hido dry-run accepts an exported term list, and a clone of the resulting link has been checked
   for author history ([D-38](DECISIONS.md#d-38-git-severity-under-mirror-assumes-the-mirror-hides-history)).
-  This needs the project owner's account.
+  Done in November 2026 ([D-78](DECISIONS.md#d-78-what-a-real-hido-check-showed)).
 
 ## M8 — Dogfood and release
 
@@ -109,32 +109,32 @@ reveal; a real `examples/sample-report.md`; and an updated `CHANGELOG.md`.
 
 ## Definition of done for 0.1.0
 
-- [ ] `pip` and `uv` install both work
-- [ ] `reviewblind init` works
-- [ ] `reviewblind discover` works
-- [ ] `reviewblind scan` works
-- [ ] `reviewblind export` works
-- [ ] `reviewblind rules` works
-- [ ] `mirror`, `archive` and `repository` target profiles work
-- [ ] Text scanner
-- [ ] Path scanner
-- [ ] Manifest scanner
-- [ ] Git scanner
-- [ ] Notebook scanner
-- [ ] PDF scanner
-- [ ] Image scanner
-- [ ] Packaging scanner
-- [ ] Stable fingerprints
-- [ ] Terminal report
-- [ ] JSON report
-- [ ] Markdown report
-- [ ] Explicit incomplete-scan state
-- [ ] 70+ tests
-- [ ] CI passing
-- [ ] Zero execution of inspected code, verified by tests
-- [ ] Threat model documented, and updated to match the implementation
-- [ ] Limitations documented, and updated to match the implementation
-- [ ] Dogfooded against at least 3 research repositories
+- [x] `pip` and `uv` install both work
+- [x] `reviewblind init` works
+- [x] `reviewblind discover` works
+- [x] `reviewblind scan` works
+- [x] `reviewblind export` works
+- [x] `reviewblind rules` works
+- [x] `mirror`, `archive` and `repository` target profiles work
+- [x] Text scanner
+- [x] Path scanner
+- [x] Manifest scanner
+- [x] Git scanner
+- [x] Notebook scanner
+- [x] PDF scanner
+- [x] Image scanner
+- [x] Packaging scanner
+- [x] Stable fingerprints
+- [x] Terminal report
+- [x] JSON report
+- [x] Markdown report
+- [x] Explicit incomplete-scan state
+- [x] 70+ tests
+- [x] CI passing
+- [x] Zero execution of inspected code, verified by tests
+- [x] Threat model documented, and updated to match the implementation
+- [x] Limitations documented, and updated to match the implementation
+- [x] Dogfooded against at least 3 research repositories
 
 ## Not part of 0.1.0
 

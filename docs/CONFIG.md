@@ -26,11 +26,11 @@ max_text_bytes = 8388608
 max_binary_bytes = 52428800
 follow_symlinks = false
 exclude = [
-  ".venv/**",
-  "node_modules/**",
-  "__pycache__/**",
-  ".pytest_cache/**",
-  ".mypy_cache/**",
+  "**/.venv/**",
+  "**/node_modules/**",
+  "**/__pycache__/**",
+  "**/.pytest_cache/**",
+  "**/.mypy_cache/**",
 ]
 
 [[allow]]

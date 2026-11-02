@@ -129,8 +129,9 @@ CATALOG: tuple[Rule, ...] = (
         "RB203",
         "Research-service account namespace",
         _W,
-        detects="A confirmed namespace on huggingface.co or wandb.ai. Unconfirmed wandb.ai "
-        "namespaces and s3:// or gs:// URIs are raised for review.",
+        detects="A confirmed namespace on huggingface.co or wandb.ai, or in a Kaggle input path. "
+        "Unconfirmed wandb.ai namespaces and Kaggle input paths, and s3:// or gs:// URIs, are "
+        "raised for review.",
         why="Experiment-tracking and model-hosting accounts usually map to one person or lab.",
         fix="Remove the URL, or move the asset to a neutral account.",
         unconfirmed=UnconfirmedPolicy(_R, Confidence.LOW),
@@ -243,10 +244,12 @@ CATALOG: tuple[Rule, ...] = (
         "RB501",
         "Identity in notebook source/Markdown",
         _B,
-        detects="A confirmed identity or structural signal in Markdown or code cells.",
+        detects="A confirmed identity or structural signal in Markdown or code cells. A home path "
+        "or Kaggle input path is raised for review even when unconfirmed.",
         why="Cell source is shown directly when the notebook is rendered.",
         fix="Edit the cell.",
         container=True,
+        unconfirmed=UnconfirmedPolicy(_R, Confidence.MEDIUM),
     ),
     _rule(
         "RB502",
@@ -263,7 +266,8 @@ CATALOG: tuple[Rule, ...] = (
         "RB503",
         "Identity/path in notebook metadata",
         _B,
-        detects="A confirmed identity or path in notebook, kernel, VS Code or Colab metadata.",
+        detects="A confirmed identity or path in notebook, kernel, VS Code or Colab metadata. "
+        "The name of a Colab account that ran a cell is reported even when unconfirmed.",
         why="Metadata is hidden from the rendered view but remains in the file.",
         fix="Clear the metadata, for example with nbstripout.",
         container=True,
@@ -286,7 +290,7 @@ CATALOG: tuple[Rule, ...] = (
         _B,
         detects="A confirmed identity in Author, Title, Creator, Producer, Subject, Keywords or "
         "XMP metadata. A non-placeholder Author is reported even when unconfirmed.",
-        why="Metadata is hidden from the page, and a mirror cannot rewrite binary files.",
+        why="Metadata is hidden from the page, and not every mirror removes it.",
         fix="Re-export the PDF with metadata removed.",
         container=True,
         unconfirmed=UnconfirmedPolicy(_W, Confidence.MEDIUM),
@@ -296,7 +300,7 @@ CATALOG: tuple[Rule, ...] = (
         "Identity in extractable PDF text",
         _B,
         detects="A confirmed identity in page text or exposed URLs.",
-        why="A mirror cannot rewrite binary files, so visible text in a PDF stays visible.",
+        why="Term replacement does not reach PDF pages, so visible text stays visible.",
         fix="Regenerate the document. If this is a legitimate citation, add an [[allow]] entry.",
         container=True,
     ),

@@ -209,7 +209,7 @@ unchanged, PDF and image rules stay at their severity under `mirror`, as §31 sp
 **Hido:** [Hido](https://hido.fim.ai/) is a hosted service from FIM Labs that "only replaces strings you
 list". Its public page and FAQ (checked October 2026) do not document the term format, matching behaviour
 or binary handling. `--format hido` therefore emits one literal term per line with no regex escaping, which
-is the same as `plain` and is what the spec expects. Milestone M7 checks this against a real Hido dry-run.
+is the same as `plain` and is what the spec expects. A real dry-run has since confirmed this (D-78).
 
 ### D-23: Text findings under `mirror`
 
@@ -307,7 +307,7 @@ Hido lets reviewers `git clone`, and its public documentation does not say what 
 
 **Decision:** keep INFO, as specified. This is an assumption about third-party services that ReviewBlind
 cannot check, so [LIMITATIONS.md](LIMITATIONS.md#mirror-workflows) tells authors to verify it themselves.
-Milestone M7 checks what a Hido clone contains. If it includes author history, this decision is reopened.
+A real Hido clone held none of the original history (D-78), so the decision stands.
 
 ### D-39: PyMuPDF crashes on macOS when warnings are errors
 
@@ -618,9 +618,66 @@ this.
 **Decision:** unconfirmed values use the same placeholder check as RB301 and RB303. A value containing a confirmed identity is
 still reported, and so is any other co-author.
 
-### D-78: Hido remains unverified
+### D-78: What a real Hido check showed
 
-**Issue:** M7 asks for a real Hido dry-run and a check of what a clone contains (D-22, D-38), which needs the project owner's account.
+**Issue:** Hido's documentation does not describe its term format, what a clone contains or how it treats binary files (D-22, D-38).
 
-**Decision:** `--format hido` stays identical to `plain`, and D-38's assumption stands, until that check is done. M7's
-last exit criterion stays open, and [LIMITATIONS.md](LIMITATIONS.md#mirror-workflows) says so.
+**Evidence:** in November 2026 the project owner published a throwaway repository holding only the fictional persona, using a list
+from `export --format hido`. The list was accepted. The clone and the zip held the same files.
+
+| Question | Result |
+|---|---|
+| A dot or brackets in a term | Literal: `alice@exampleXedu` was left alone, and `A. Example (PhD)` was replaced |
+| Case | Ignored |
+| Accents | Ignored: the term `José Example` also replaced `Jose Example` |
+| A longer word | Left alone: `Alice Examples` stayed. `aliceexample_data` was replaced, so `_` counts as a boundary |
+| A name across a line break | Replaced |
+| File names | Replaced |
+| Git history | One commit by `Anonymous <anon@hido.science>`, dated 1970. The original author, message, branch name and remote were gone |
+| PDF metadata | Author and Producer removed, with dates set to 1970 |
+| PDF page text | **Not replaced.** The name stayed visible, and the dry-run did not list the file |
+
+**Decision:** `--format hido` stays identical to `plain`, and RB401 to RB404 stay INFO under `mirror`, since both assumptions held.
+RB601 stays BLOCKER under `mirror`, because Anonymous GitHub does not remove metadata and ReviewBlind cannot tell which mirror will
+be used. Its reason no longer says that a mirror cannot rewrite binary files.
+
+**Not tested:** image metadata, a history of more than one commit or branch, and submodules. This was one test of a service that can
+change, so authors are still told to check their own link.
+
+### D-79: What three real repositories showed
+
+**Issue:** M8 runs the tool on real research repositories, and each problem becomes a regression test using the persona. These are
+the changes they led to.
+
+**False alarms fixed:**
+
+- `application/vnd.jupyter.widget-view+json` counted as binary output, so each progress bar raised RB504: 179 findings in one
+  notebook. Any `+json` output is now read as text.
+- `/home/claude` and `C:\Users\hp` were reported as personal home paths. Default account names are now placeholders, unless the
+  config lists one as a username.
+- ImgBot was offered as a high-confidence author. It is now treated as a bot.
+- The default excludes only applied at the top of the tree, so a nested `__pycache__` raised RB803 and marked the scan incomplete.
+  They now apply anywhere. This changes the defaults, but a config that sets `exclude` is unaffected.
+
+**Gaps fixed:**
+
+- Colab saves the account name of whoever ran each cell in `executionInfo.user.displayName`, which is found only if the config
+  lists that person. It is now RB503 at REVIEW even when unconfirmed, so a co-author missing from the config still shows.
+- A repository can be missing `.git/index`, so that every file looks untracked. Files were still inspected, but a committed config
+  would have been treated as untracked. Tracking is now treated as unknown, which keeps RB805 a BLOCKER, and a note says so.
+- A license naming several people gave one long candidate that could never match. Discovery now gives one for each person. A list
+  is only split if every part has at least two words, so `Example Labs, Inc.` stays whole.
+- A config with a byte order mark, as PowerShell's `Out-File` writes it, failed with a confusing error. It can now be read.
+- An independent text search for each author's name found two notebooks with no finding at all, because their only trace was
+  `/kaggle/input/notebooks/<user>/`. Kaggle mounts attached data under the account that owns it, so a Kaggle input path is now
+  RB203, and RB501 to RB503 in a notebook. It is raised for review when unconfirmed. The account may be someone else's public
+  dataset, so it does not block.
+- RB501 had no unconfirmed policy, so `/home/<user>/` was reported for review in a `.py` file and not in a code cell. Nothing
+  recorded a reason, and a cell is rendered as plainly as a file, so RB501 now has the same policy as RB502.
+
+**Left alone:** a first name alone, such as a folder named after an author, and a name without its space. Matching those from a
+confirmed name would flag every other person who shares a first name, so [LIMITATIONS.md](LIMITATIONS.md) tells the author to
+list them.
+
+**Also left alone:** text that needs normalizing slowly is the main cost on large non-ASCII files, at about 30 seconds for the slowest
+repository. That is acceptable, and the code maps offsets, so a change there is not worth the risk before 0.1.0.

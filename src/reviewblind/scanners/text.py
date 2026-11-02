@@ -26,6 +26,7 @@ _IDENTITY_RULES = {
 }
 _SIGNAL_RULES = {
     SignalKind.HOME_PATH: ("RB201", "Found a personal home path"),
+    SignalKind.KAGGLE_PATH: ("RB203", "Found a research-service namespace"),
     SignalKind.INSTITUTION_DOMAIN: ("RB202", "Found an institutional hostname"),
     SignalKind.SERVICE_NAMESPACE: ("RB203", "Found a research-service namespace"),
     SignalKind.GIT_NAMESPACE: ("RB204", "Found a personal Git hosting namespace"),

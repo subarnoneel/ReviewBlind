@@ -119,6 +119,9 @@ def test_home_path_with_another_username_needs_review(tmp_path: Path) -> None:
         "/home/ubuntu/project",
         "/home/runner/work/x",
         "/home/jovyan/work",
+        "/home/claude/work",
+        "C:\\Users\\hp\\x",
+        "C:\\Users\\DELL\\x",
         "/Users/username/x",
         "C:\\Users\\runneradmin\\x",
         "/home/$USER/x",
@@ -129,6 +132,13 @@ def test_home_path_with_another_username_needs_review(tmp_path: Path) -> None:
 )
 def test_placeholders_and_web_routes_are_not_home_paths(tmp_path: Path, text: str) -> None:
     assert in_text(tmp_path, f"{text}\n") == []
+
+
+def test_a_placeholder_is_still_found_if_the_config_lists_it(tmp_path: Path) -> None:
+    identity = replace(PERSONA.identity, usernames=("dell",))
+    write_tree(tmp_path, {"a.txt": "C:\\Users\\dell\\data\n"})
+    found = findings(tmp_path, config=replace(PERSONA, identity=identity))
+    assert [item.rule_id for item in found] == ["RB201"]
 
 
 # Hostnames
@@ -172,6 +182,10 @@ def test_public_mail_providers_are_not_institutions(tmp_path: Path) -> None:
         "s3://aliceexample/results",
         "gs://aliceexample-results/x",
         "wandb.ai/aliceexample-lab/proj",
+        "/kaggle/input/datasets/aliceexample/data",
+        "/kaggle/input/notebooks/aliceexample/run",
+        r"C:\kaggle\input\datasets\aliceexample\data",
+        r"C:\\kaggle\\input\\datasets\\aliceexample\\data",
     ],
 )
 def test_confirmed_research_service_namespaces(tmp_path: Path, text: str) -> None:
@@ -181,7 +195,13 @@ def test_confirmed_research_service_namespaces(tmp_path: Path, text: str) -> Non
 
 
 @pytest.mark.parametrize(
-    "text", ["https://wandb.ai/bob/proj", "s3://some-bucket/x", "gs://other/y"]
+    "text",
+    [
+        "https://wandb.ai/bob/proj",
+        "s3://some-bucket/x",
+        "gs://other/y",
+        "/kaggle/input/datasets/bob/data",
+    ],
 )
 def test_unconfirmed_accounts_and_buckets_need_review(tmp_path: Path, text: str) -> None:
     finding = only(in_text(tmp_path, f"{text}\n"))
@@ -199,6 +219,11 @@ def test_unconfirmed_accounts_and_buckets_need_review(tmp_path: Path, text: str)
         "https://wandb.ai/site",
         "see github.com",
         "https://mygithub.com/aliceexample2",
+        "/kaggle/input/some-data/train.csv",
+        "/kaggle/input/competitions/titanic/train.csv",
+        "/kaggle/working/out.csv",
+        "/kaggle/input/datasets/yourusername/data",
+        "mykaggle/input/datasets/bob/data",
     ],
 )
 def test_generic_urls_are_not_findings(tmp_path: Path, text: str) -> None:

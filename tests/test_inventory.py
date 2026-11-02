@@ -331,3 +331,36 @@ def test_files_with_a_byte_order_mark_are_read_correctly(encoding: str) -> None:
     content = "Alice Example".encode(encoding)
     assert looks_like_text(content)
     assert decode_text(content) == "Alice Example"
+
+
+# Found on real repositories
+
+
+@pytest.mark.parametrize("directory", ["__pycache__", "node_modules", ".venv", ".pytest_cache"])
+def test_default_excludes_apply_anywhere_in_the_tree(tmp_path: Path, directory: str) -> None:
+    write_tree(
+        tmp_path,
+        {f"{directory}/a.bin": b"\x00", f"deep/down/{directory}/b.bin": b"\x00", "keep.py": "x\n"},
+    )
+    inventory = build(tmp_path, settings=ScanSettings())
+    assert paths(inventory) == ["keep.py"]
+    assert inventory.excluded == 2
+
+
+def _without_index(root: Path) -> None:
+    (root / ".git" / "index").unlink()
+
+
+def test_a_missing_index_still_inspects_everything_and_says_so(tmp_path: Path) -> None:
+    root = init_repo(tmp_path / "repo", {"a.py": "x\n", "b.py": "y\n"})
+    _without_index(root)
+    inventory = build(root)
+    assert paths(inventory) == ["a.py", "b.py"]
+    assert any("index is probably missing" in note for note in inventory.notes)
+    assert {artifact.tracked for artifact in inventory.artifacts} == {None}
+
+
+def test_an_empty_repository_is_not_reported_as_missing_its_index(tmp_path: Path) -> None:
+    git(tmp_path, "init", "-q")
+    write_tree(tmp_path, {"a.py": "x\n"})
+    assert not any("index" in note for note in build(tmp_path).notes)

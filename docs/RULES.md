@@ -87,7 +87,7 @@ Severities: **B** = BLOCKER, **W** = WARNING, **R** = REVIEW, **I** = INFO.
 |---|---|---|---|---|---|---|
 | RB201 | Personal absolute home path | W | W | W | HIGH | R + MEDIUM (placeholders ignored) |
 | RB202 | Institution-associated hostname/domain | W | W | W | HIGH | — |
-| RB203 | Research-service account namespace | W | W | W | HIGH | R + LOW for `wandb.ai`, `s3://` and `gs://`; — for `huggingface.co` |
+| RB203 | Research-service account namespace | W | W | W | HIGH | R + LOW for `wandb.ai`, Kaggle input paths, `s3://` and `gs://`; — for `huggingface.co` |
 | RB204 | Personal Git hosting namespace | B | B | B | HIGH | — |
 | RB205 | SLURM/HPC user or mail identifier | W | W | W | HIGH | W + MEDIUM |
 
@@ -115,9 +115,9 @@ Severities: **B** = BLOCKER, **W** = WARNING, **R** = REVIEW, **I** = INFO.
 
 | ID | Title | Mir | Arc | Repo | Conf. | Unconfirmed |
 |---|---|---|---|---|---|---|
-| RB501 ◆ | Identity in notebook source/Markdown | B | B | B | HIGH | — |
-| RB502 ◆ | Identity in notebook output/traceback | B | B | B | HIGH | R + MEDIUM for a home path |
-| RB503 ◆ | Identity/path in notebook metadata | B | B | B | HIGH | R + MEDIUM for a home path |
+| RB501 ◆ | Identity in notebook source/Markdown | B | B | B | HIGH | R + MEDIUM for a home path or Kaggle input path |
+| RB502 ◆ | Identity in notebook output/traceback | B | B | B | HIGH | R + MEDIUM for a home path or Kaggle input path |
+| RB503 ◆ | Identity/path in notebook metadata | B | B | B | HIGH | R + MEDIUM for a home path, Kaggle input path or Colab account name (placeholders ignored) |
 | RB504 | Embedded binary notebook output requires review | R | R | R | HIGH | n/a |
 
 ### PDF
@@ -197,7 +197,7 @@ suggested action shown with a finding.
 - *Fix:* replace it with a generic hostname, or read it from configuration.
 
 **RB203 — Research-service account namespace**
-- *Detects:* a confirmed namespace on `huggingface.co` or `wandb.ai`. Unconfirmed `wandb.ai` namespaces and `s3://` or `gs://` URIs are raised for review.
+- *Detects:* a confirmed namespace on `huggingface.co` or `wandb.ai`, or in a Kaggle input path. Unconfirmed `wandb.ai` namespaces and Kaggle input paths, and `s3://` or `gs://` URIs, are raised for review.
 - *Why:* experiment-tracking and model-hosting accounts usually map to one person or lab.
 - *Fix:* remove the URL, or move the asset to a neutral account.
 
@@ -258,7 +258,7 @@ suggested action shown with a finding.
 ### Notebook rules
 
 **RB501 — Identity in notebook source/Markdown** ◆
-- *Detects:* a confirmed identity or structural signal in Markdown or code cells.
+- *Detects:* a confirmed identity or structural signal in Markdown or code cells. A home path or Kaggle input path is raised for review even when unconfirmed.
 - *Why:* cell source is shown directly when the notebook is rendered.
 - *Fix:* edit the cell.
 
@@ -268,7 +268,7 @@ suggested action shown with a finding.
 - *Fix:* clear or re-run the affected output before preparing the anonymous artifact.
 
 **RB503 — Identity/path in notebook metadata** ◆
-- *Detects:* a confirmed identity or path in notebook, kernel, VS Code or Colab metadata.
+- *Detects:* a confirmed identity or path in notebook, kernel, VS Code or Colab metadata. The name of a Colab account that ran a cell is reported even when unconfirmed.
 - *Why:* metadata is hidden from the rendered view but remains in the file.
 - *Fix:* clear the metadata, for example with `nbstripout`.
 
@@ -281,12 +281,12 @@ suggested action shown with a finding.
 
 **RB601 — Identity in PDF metadata** ◆
 - *Detects:* a confirmed identity in Author, Title, Creator, Producer, Subject, Keywords or XMP metadata. A non-placeholder `Author` is reported even when unconfirmed.
-- *Why:* metadata is hidden from the page, and a mirror cannot rewrite binary files.
+- *Why:* metadata is hidden from the page, and not every mirror removes it.
 - *Fix:* re-export the PDF with metadata removed.
 
 **RB602 — Identity in extractable PDF text** ◆
 - *Detects:* a confirmed identity in page text or exposed URLs.
-- *Why:* a mirror cannot rewrite binary files, so visible text in a PDF stays visible.
+- *Why:* term replacement does not reach PDF pages, so visible text stays visible.
 - *Fix:* regenerate the document. If this is a legitimate citation, add an `[[allow]]` entry.
 
 ### Image rules

@@ -31,6 +31,11 @@ _SERVICE_URL = re.compile(
     re.IGNORECASE,
 )
 _PAGES_HOST = re.compile(r"(?<![\w.-])(?P<owner>[\w-]+)\.(?:github|gitlab)\.io", re.IGNORECASE)
+_KAGGLE_PATH = re.compile(
+    r"(?<![\w.-])kaggle[\\/]{1,2}input[\\/]{1,2}(?:datasets|notebooks)[\\/]{1,2}"
+    rf"(?P<owner>{_NAME})",
+    re.IGNORECASE,
+)
 _BUCKET = re.compile(rf"(?<![\w.-])(?:s3|gs)://(?P<bucket>{_NAME})", re.IGNORECASE)
 _SCHEDULER = re.compile(
     r"^[ \t]*#(?:SBATCH[ \t]+(?:--mail-user|--account|--uid|-A)(?:=|[ \t]+)"
@@ -42,14 +47,22 @@ _SCHEDULER = re.compile(
 
 _PLACEHOLDER_USERS = frozenset(
     {
+        "acer",
         "admin",
         "administrator",
+        "asus",
+        "claude",  # the sandbox of an AI assistant, seen in pasted paths
         "default",
+        "dell",
         "ec2-user",
         "guest",
+        "hp",
         "jovyan",
+        "lenovo",
         "me",
         "name",
+        "owner",
+        "pc",
         "public",
         "root",
         "runner",
@@ -106,6 +119,7 @@ _SITE_PAGES = frozenset({"features", "marketplace", "orgs", "settings", "topics"
 
 class SignalKind(Enum):
     HOME_PATH = "HOME_PATH"
+    KAGGLE_PATH = "KAGGLE_PATH"
     INSTITUTION_DOMAIN = "INSTITUTION_DOMAIN"
     SERVICE_NAMESPACE = "SERVICE_NAMESPACE"
     GIT_NAMESPACE = "GIT_NAMESPACE"
@@ -115,6 +129,7 @@ class SignalKind(Enum):
 
 _EVIDENCE_CLASS = {
     SignalKind.HOME_PATH: EvidenceClass.INDIRECT,
+    SignalKind.KAGGLE_PATH: EvidenceClass.INDIRECT,
     SignalKind.INSTITUTION_DOMAIN: EvidenceClass.INDIRECT,
     SignalKind.SERVICE_NAMESPACE: EvidenceClass.INDIRECT,
     SignalKind.GIT_NAMESPACE: EvidenceClass.DIRECT,
@@ -197,6 +212,7 @@ class SignalMatcher:
         """Signals in order of position. `limit` bounds the work done per kind on hostile input."""
         finders = (
             self._home_paths(text),
+            self._kaggle_paths(text),
             self._service_urls(text),
             self._pages_hosts(text),
             self._buckets(text),
@@ -210,7 +226,8 @@ class SignalMatcher:
     def _home_paths(self, text: str) -> Iterator[Signal]:
         for match in _HOME_PATH.finditer(text):
             user = (match["posix"] or match["windows"]).rstrip(".")
-            if user.casefold() in _PLACEHOLDER_USERS:
+            owner = self._confirmed_owner(user)
+            if owner is None and user.casefold() in _PLACEHOLDER_USERS:
                 continue
             group = "posix" if match["posix"] else "windows"
             end = match.start(group) + len(user)
@@ -219,7 +236,19 @@ class SignalMatcher:
                 match.start(),
                 end,
                 text[match.start() : end],
-                self._confirmed_owner(user),
+                owner,
+            )
+
+    def _kaggle_paths(self, text: str) -> Iterator[Signal]:
+        # Kaggle mounts an attached dataset or notebook under the account that owns it.
+        for match in _KAGGLE_PATH.finditer(text):
+            user = match["owner"].rstrip(".")
+            owner = self._confirmed_owner(user)
+            if owner is None and user.casefold() in _PLACEHOLDER_USERS:
+                continue
+            end = match.start("owner") + len(user)
+            yield Signal(
+                SignalKind.KAGGLE_PATH, match.start(), end, text[match.start() : end], owner
             )
 
     def _service_urls(self, text: str) -> Iterator[Signal]:

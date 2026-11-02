@@ -217,3 +217,13 @@ def test_a_tracked_report_is_a_blocker(tmp_path: Path) -> None:
     root = init_repo(tmp_path / "repo", {"report.json": document})
     git(root, "status")
     assert only_rule(root, "RB805") is Severity.BLOCKER
+
+
+def test_a_config_is_a_blocker_when_a_missing_index_hides_whether_it_is_tracked(
+    tmp_path: Path,
+) -> None:
+    # RB805 treats "cannot be determined" as tracked, and a repository can really be in this state.
+    root = init_repo(tmp_path / "repo", {".reviewblind.toml": "version = 1\n"})
+    (root / ".git" / "index").unlink()
+    found = [item for item in scan(root).result.findings if item.rule_id == "RB805"]
+    assert [item.severity for item in found] == [Severity.BLOCKER]

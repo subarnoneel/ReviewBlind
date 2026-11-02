@@ -18,6 +18,7 @@ from reviewblind.scanners.manifests import (
 from reviewblind.signals import namespace_owner
 
 _INDEX = re.compile(r"\[\d+\]")
+_LIST_SEPARATOR = re.compile(r"\s*(?:[,;&]|\band\b)\s*")
 _STRUCTURED_FILES = frozenset(
     {"pyproject.toml", "package.json", "setup.py", "setup.cfg", "citation.cff"}
 )
@@ -35,15 +36,20 @@ def _person_label(name: str, where: str, structured: bool) -> str:
     return f"{name} maintainer" if "maintainer" in where else f"{name} author"
 
 
+def _people(value: str) -> list[str]:
+    """Each person in `Alice Example, Bob Sample`. `Example University, Inc.` is one holder."""
+    parts = [part for part in _LIST_SEPARATOR.split(value) if part]
+    return parts if len(parts) > 1 and all(len(part.split()) > 1 for part in parts) else [value]
+
+
 def _observe(name: str, field: ManifestField) -> Iterator[Observation]:
     structured = name.lower() in _STRUCTURED_FILES
     # A license may name someone other than the authors, such as the project it was forked from.
     strength = Confidence.HIGH if structured else Confidence.MEDIUM
     if field.kind is FieldKind.PERSON:
         label = _person_label(name, field.where, structured)
-        yield Observation(
-            field.value, person_kind(field.value), strength, label, SourceClass.MANIFEST
-        )
+        for person in _people(field.value):
+            yield Observation(person, person_kind(person), strength, label, SourceClass.MANIFEST)
     elif field.kind is FieldKind.EMAIL:
         yield Observation(
             field.value,
