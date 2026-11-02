@@ -84,6 +84,15 @@ with the fictional persona. Each confirmed case becomes a regression test.
   [docs/DECISIONS.md](docs/DECISIONS.md).
 - Use short, imperative commit subjects, such as `Add RB502 traceback detection`.
 
+## Releasing
+
+1. In a pull request, set `__version__` in `src/reviewblind/__init__.py`, and give the `[Unreleased]` section of
+   `CHANGELOG.md` a version and a date.
+2. After it merges and CI passes, publish a GitHub release on `main` with the tag `v<version>`.
+
+Publishing the release runs `.github/workflows/release.yml`, which builds the package, checks that its version
+matches the tag, and uploads it to PyPI. A version on PyPI cannot be replaced, so a mistake needs a new version.
+
 ## Security issues
 
 Please do not open a public issue. See [SECURITY.md](SECURITY.md).

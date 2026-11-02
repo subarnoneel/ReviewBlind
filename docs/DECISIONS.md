@@ -681,3 +681,15 @@ list them.
 
 **Also left alone:** text that needs normalizing slowly is the main cost on large non-ASCII files, at about 30 seconds for the slowest
 repository. That is acceptable, and the code maps offsets, so a change there is not worth the risk before 0.1.0.
+
+### D-80: Releases publish through Trusted Publishing
+
+**Issue:** uploading to PyPI from a laptop needs a long-lived API token, which can leak and can publish under the project's name
+until someone revokes it.
+
+**Decision:** publishing a GitHub release runs `.github/workflows/release.yml`, and PyPI accepts the workflow's short-lived
+identity through Trusted Publishing, so no token is stored anywhere. The workflow builds in one job and publishes in another, so
+only the second has `id-token: write`. It refuses a tag that differs from the package version, because a published version cannot
+be replaced. The `pypi` environment requires the owner's approval, as a last check before that permanent step.
+
+The action is a CI tool rather than a runtime dependency, so CON-2 does not apply.

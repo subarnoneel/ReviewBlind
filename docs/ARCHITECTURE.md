@@ -1,6 +1,6 @@
 # Architecture
 
-> Status: this is the design for 0.1.0. [ROADMAP.md](ROADMAP.md) shows what is built so far.
+> Status: this is the design of 0.1.0, as built.
 
 ## 1. Overview
 
