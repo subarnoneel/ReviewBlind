@@ -61,6 +61,10 @@ def git(root: Path, *args: str) -> str:
             "commit.gpgsign=false",
             "-c",
             "core.autocrlf=false",
+            "-c",
+            # `git commit` otherwise starts background maintenance, whose lock file can come and go
+            # while a test compares snapshots of the repository.
+            "maintenance.auto=false",
             *args,
         ],
         cwd=root,
