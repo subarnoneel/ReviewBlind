@@ -10,7 +10,14 @@ import re
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from reviewblind.models import Artifact, ArtifactKind, Detection, SkipReason
+from reviewblind.models import (
+    Artifact,
+    ArtifactKind,
+    Detection,
+    EvidenceClass,
+    Location,
+    SkipReason,
+)
 from reviewblind.scanners.base import (
     ScanContext,
     field_detections,
@@ -18,14 +25,17 @@ from reviewblind.scanners.base import (
     read_binary_artifact,
     within_detection_limit,
 )
+from reviewblind.scanners.manifests import FieldKind, ManifestField, is_placeholder
 from reviewblind.signals import SignalKind
+from reviewblind.utils.text import sanitize_evidence
 
 MAX_METADATA_NODES = 100_000
 
 # IPython colours its tracebacks, and a colour code can fall in the middle of a path or name.
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-_HOME_PATHS = frozenset({SignalKind.HOME_PATH})
+_ACCOUNT_PATHS = frozenset({SignalKind.HOME_PATH, SignalKind.KAGGLE_PATH})
 _TEXT_MIME_PREFIXES = ("text/", "application/json", "application/javascript", "image/svg")
+_COLAB_USER_FIELD = ".executionInfo.user.displayName"
 
 
 def _text(value: object) -> str | None:
@@ -91,15 +101,36 @@ class NotebookScanner:
         relpath: str, metadata: object, prefix: str, context: ScanContext
     ) -> Iterator[Detection]:
         for field, value in _strings(metadata, prefix):
-            yield from field_detections(
-                value,
-                rule_id="RB503",
-                artifact=relpath,
-                field=field,
-                message="Found an identity in notebook metadata",
-                context=context,
-                unconfirmed=_HOME_PATHS,
+            found = list(
+                field_detections(
+                    value,
+                    rule_id="RB503",
+                    artifact=relpath,
+                    field=field,
+                    message="Found an identity in notebook metadata",
+                    context=context,
+                    unconfirmed=_ACCOUNT_PATHS,
+                )
             )
+            yield from found
+            person = ManifestField(FieldKind.PERSON, value.strip(), field)
+            if (
+                field.endswith(_COLAB_USER_FIELD)
+                and value.strip() not in {"", _COLAB_USER_FIELD.rpartition(".")[2]}  # not the key
+                and not found
+                and not is_placeholder(person)
+            ):
+                # A co-author may be missing from the config, and Colab names them all the same.
+                yield Detection(
+                    rule_id="RB503",
+                    artifact=relpath,
+                    location=Location(relpath, field=field),
+                    matched=value.strip(),
+                    evidence=sanitize_evidence(value.strip()),
+                    message="Found a Colab account name in notebook metadata",
+                    identity=None,
+                    evidence_class=EvidenceClass.DIRECT,
+                )
 
     def _cell(
         self, relpath: str, cell: dict[str, Any], prefix: str, context: ScanContext
@@ -113,6 +144,7 @@ class NotebookScanner:
                 field=f"{prefix}.source",
                 message="Found an identity in a notebook cell",
                 context=context,
+                unconfirmed=_ACCOUNT_PATHS,
             )
         yield from self._metadata(relpath, cell.get("metadata"), f"{prefix}.metadata", context)
         attachments = cell.get("attachments")
@@ -135,7 +167,7 @@ class NotebookScanner:
                 field=field,
                 message="Found an identity in notebook output",
                 context=context,
-                unconfirmed=_HOME_PATHS,
+                unconfirmed=_ACCOUNT_PATHS,
             )
         data = output.get("data")
         if isinstance(data, dict) and any(_is_binary_mime(mime) for mime in data):
@@ -144,7 +176,12 @@ class NotebookScanner:
 
 
 def _is_binary_mime(mime: object) -> bool:
-    return isinstance(mime, str) and not mime.startswith(_TEXT_MIME_PREFIXES)
+    # `+json` covers progress bars and interactive plots, whose contents are read as text.
+    return (
+        isinstance(mime, str)
+        and not mime.startswith(_TEXT_MIME_PREFIXES)
+        and not mime.endswith("+json")
+    )
 
 
 def _binary_output(relpath: str, field: str) -> Detection:

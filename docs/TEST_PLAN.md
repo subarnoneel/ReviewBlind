@@ -207,3 +207,19 @@ findings, false positives, missed leaks and any crash, in a private note. Publis
 aggregate results, because the raw reports contain identities.
 
 Each false positive or missed leak becomes a regression test, using the fictional persona.
+
+### Results for 0.1.0
+
+Three real research repositories, with notebooks, PDFs, figures and datasets: 351 files and 163 commits, on all three
+targets.
+
+| Measure | Result |
+|---|---|
+| Crashes, or exit code 4 | 0 |
+| Files changed in a scanned repository | 0 |
+| Reports differing between two runs | 0 |
+| Time per scan | 3 to 36 seconds. The slowest repository is 679 MB, with large non-ASCII data files |
+| False alarms found | 4 causes, about 190 findings. All fixed |
+| Gaps found | 5 causes. All fixed, or stated in [LIMITATIONS.md](LIMITATIONS.md) |
+
+[D-79](DECISIONS.md#d-79-what-three-real-repositories-showed) lists them.

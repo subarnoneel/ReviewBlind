@@ -455,6 +455,7 @@ def test_an_oversized_file_is_never_opened(tmp_path: Path, monkeypatch: pytest.M
         "alice ",
         " ",
         "s3://",
+        "kaggle/input/datasets/",
         "#SBATCH ",
         "github.com/",
         "C:\\Users\\",

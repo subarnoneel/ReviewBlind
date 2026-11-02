@@ -27,13 +27,14 @@ _BOT_NAMES = frozenset(
         "github actions",
         "github-actions",
         "gitlab",
+        "imgbotapp",
         "pre-commit-ci",
         "renovate",
         "semantic-release-bot",
         "web-flow",
     }
 )
-_BOT_EMAILS = frozenset({"action@github.com", "noreply@github.com"})
+_BOT_EMAILS = frozenset({"action@github.com", "imgbothelp@gmail.com", "noreply@github.com"})
 # A token in a remote URL must not be copied into a report. `git@` is the normal SSH user.
 _URL_CREDENTIALS = re.compile(r"(?<=://)(?!git@)[^/@\s]+@")
 

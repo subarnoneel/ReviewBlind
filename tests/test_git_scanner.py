@@ -227,6 +227,7 @@ def test_a_neutral_looking_value_holding_a_confirmed_identity_is_still_found(rep
         ("dependabot[bot]", "49699333+dependabot[bot]@users.noreply.github.com"),
         ("github-actions", "action@github.com"),
         ("GitHub", "noreply@github.com"),
+        ("ImgBotApp", "ImgBotHelp@gmail.com"),
     ],
 )
 def test_bots_are_not_people(repo: Path, bot: tuple[str, str]) -> None:

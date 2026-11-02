@@ -161,6 +161,14 @@ def test_invalid_utf8_is_a_config_error(tmp_path: Path) -> None:
         load_config(path)
 
 
+@pytest.mark.parametrize("encoding", ["utf-8-sig", "utf-16"])
+def test_a_config_saved_by_a_windows_tool_can_be_read(tmp_path: Path, encoding: str) -> None:
+    # PowerShell's Out-File writes a byte order mark, and its `>` can write UTF-16.
+    path = tmp_path / ".reviewblind.toml"
+    path.write_bytes('version = 1\n[identity]\nnames = ["Alice Example"]\n'.encode(encoding))
+    assert load_config(path).identity.names == ("Alice Example",)
+
+
 def test_deeply_nested_toml_does_not_crash(tmp_path: Path) -> None:
     path = tmp_path / ".reviewblind.toml"
     path.write_text("x = " + "[" * 100_000, encoding="utf-8")

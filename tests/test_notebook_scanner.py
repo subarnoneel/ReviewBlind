@@ -69,9 +69,30 @@ def test_a_namespace_in_source_is_a_blocker(tmp_path: Path) -> None:
     assert found.matched == "github.com/aliceexample/tools"
 
 
-def test_an_unconfirmed_path_in_source_is_not_reported(tmp_path: Path) -> None:
-    # RULES.md: RB501 has no unconfirmed policy.
-    assert scan_notebook(tmp_path, notebook(code_cell(source="open('/home/bob/x')\n"))) == []
+@pytest.mark.parametrize(
+    "path", ["/home/bob/x", "/kaggle/input/datasets/bob/x", "/kaggle/input/notebooks/bob/x"]
+)
+def test_an_unconfirmed_account_path_in_source_needs_review(tmp_path: Path, path: str) -> None:
+    # The same path in a .py file is reported, and a cell should be no different.
+    found = only(scan_notebook(tmp_path, notebook(code_cell(source=f"open('{path}')\n"))))
+    assert found.rule_id == "RB501"
+    assert (found.severity, found.confidence) == (Severity.REVIEW, Confidence.MEDIUM)
+
+
+def test_a_confirmed_kaggle_path_in_source_is_a_warning(tmp_path: Path) -> None:
+    source = "open('/kaggle/input/datasets/aliceexample/x')\n"
+    found = only(scan_notebook(tmp_path, notebook(code_cell(source=source))))
+    assert (found.severity, found.confidence) == (Severity.WARNING, Confidence.HIGH)
+    assert found.identity == "aliceexample"
+    assert found.matched == "kaggle/input/datasets/aliceexample"
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["s3://other/x", "https://wandb.ai/bob/p", "/home/user/x", "/kaggle/input/some-data/x"],
+)
+def test_other_unconfirmed_signals_in_source_are_not_reported(tmp_path: Path, path: str) -> None:
+    assert scan_notebook(tmp_path, notebook(code_cell(source=f"open('{path}')\n"))) == []
 
 
 # RB502: outputs
@@ -161,9 +182,11 @@ def test_colour_codes_cannot_split_a_path_or_a_name(tmp_path: Path) -> None:
     assert all("\x1b" not in item.evidence for item in items)
 
 
-def test_another_users_home_path_in_output_needs_review(tmp_path: Path) -> None:
-    output = {"output_type": "stream", "name": "stdout", "text": "saved in /home/bob/out\n"}
+@pytest.mark.parametrize("path", ["/home/bob/out", "/kaggle/input/notebooks/bob/out"])
+def test_another_users_account_path_in_output_needs_review(tmp_path: Path, path: str) -> None:
+    output = {"output_type": "stream", "name": "stdout", "text": f"saved in {path}\n"}
     found = only(scan_notebook(tmp_path, notebook(code_cell(output))))
+    assert found.rule_id == "RB502"
     assert (found.severity, found.confidence) == (Severity.REVIEW, Confidence.MEDIUM)
 
 
@@ -382,3 +405,62 @@ def test_an_oversized_notebook_is_skipped_by_the_binary_cap(tmp_path: Path) -> N
     report = scan(tmp_path, config=too_small)
     assert report.result.skipped[0].reason is SkipReason.TOO_LARGE
     assert report.result.findings == []
+
+
+# Found on real repositories
+
+
+def _colab_cell(name: str) -> dict[str, Any]:
+    user = {"displayName": name, "userId": "1234567890"}
+    return {
+        "cell_type": "code",
+        "metadata": {"executionInfo": {"user": user, "user_tz": -360}},
+        "source": "run()\n",
+        "outputs": [],
+    }
+
+
+def test_a_progress_bar_is_not_an_embedded_image(tmp_path: Path) -> None:
+    # tqdm in a notebook saves one of these per bar, which raised 179 findings in one real file.
+    widget = {"model_id": "abc123", "version_major": 2, "version_minor": 0}
+    output = {
+        "output_type": "display_data",
+        "metadata": {},
+        "data": {"application/vnd.jupyter.widget-view+json": widget, "text/plain": "0%|  |"},
+    }
+    assert scan_notebook(tmp_path, notebook(code_cell(output))) == []
+
+
+def test_text_inside_a_json_output_is_read(tmp_path: Path) -> None:
+    figure = {"layout": {"title": {"text": "Results by Alice Example"}}}
+    output = {
+        "output_type": "display_data",
+        "metadata": {},
+        "data": {"application/vnd.plotly.v1+json": figure},
+    }
+    assert only(scan_notebook(tmp_path, notebook(code_cell(output)))).rule_id == "RB502"
+
+
+def test_a_colab_account_with_a_confirmed_name_is_a_blocker(tmp_path: Path) -> None:
+    found = only(scan_notebook(tmp_path, notebook(_colab_cell("ALICE EXAMPLE 12345"))))
+    assert (found.rule_id, found.severity) == ("RB503", Severity.BLOCKER)
+    assert found.location.field == "cell[0].metadata.executionInfo.user.displayName"
+
+
+def test_a_colab_account_missing_from_the_config_needs_review(tmp_path: Path) -> None:
+    # A co-author may not be in the config at all, and this is the only place they would show.
+    found = only(scan_notebook(tmp_path, notebook(_colab_cell("Bob Coauthor"))))
+    assert (found.rule_id, found.severity) == ("RB503", Severity.REVIEW)
+    assert found.confidence is Confidence.MEDIUM
+    assert found.identity is None
+    assert found.matched == "Bob Coauthor"
+
+
+@pytest.mark.parametrize("name", ["Anonymous", "", "  "])
+def test_a_neutral_colab_account_is_not_reported(tmp_path: Path, name: str) -> None:
+    assert scan_notebook(tmp_path, notebook(_colab_cell(name))) == []
+
+
+def test_a_display_name_elsewhere_is_not_a_colab_account(tmp_path: Path) -> None:
+    metadata = {"kernelspec": {"displayName": "Bob Coauthor", "name": "python3"}}
+    assert scan_notebook(tmp_path, notebook(metadata=metadata)) == []

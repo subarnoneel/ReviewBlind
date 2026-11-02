@@ -112,7 +112,7 @@ Rule assignments are in [RULES.md](RULES.md).
 |---|---|
 | FR-TEXT-1 | `TextScanner` MUST inspect the listed source and data extensions, plus unknown files that decode as text |
 | FR-TEXT-2 | MUST detect confirmed names, aliases, emails, usernames and affiliations |
-| FR-TEXT-3 | MUST structurally detect `/home/<u>/`, `/Users/<u>/`, `C:\Users\<u>\`; `github.com`, `gitlab.com`, `huggingface.co` and `wandb.ai` namespaces; `s3://` and `gs://` URIs; institutional domains; SLURM identifiers |
+| FR-TEXT-3 | MUST structurally detect `/home/<u>/`, `/Users/<u>/`, `C:\Users\<u>\`; `github.com`, `gitlab.com`, `huggingface.co` and `wandb.ai` namespaces; `s3://` and `gs://` URIs; Kaggle input paths; institutional domains; SLURM identifiers |
 | FR-TEXT-4 | MUST NOT flag a generic URL or a placeholder home path unless its namespace corresponds to a confirmed identity or a rule explicitly covers the unconfirmed case |
 | FR-PATH-1 | `PathScanner` MUST check every path segment of every inventoried artifact |
 | FR-MAN-1 | `ManifestScanner` MUST parse author, maintainer, email, repository, homepage and organization fields in the manifest files |
