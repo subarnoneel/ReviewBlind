@@ -2,8 +2,7 @@
 
 ## Supported versions
 
-ReviewBlind has not had a release yet. Once it does, security fixes will go to the latest
-release.
+Security fixes go to the latest release.
 
 ## Reporting a vulnerability
 

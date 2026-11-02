@@ -103,7 +103,8 @@ allowlist handling, and the incomplete-scan state.
 outside this repository.
 
 **Deliver:** runs on those repositories; regression tests for what they
-reveal; a real `examples/sample-report.md`; and an updated `CHANGELOG.md`.
+reveal; a real `examples/sample-report.md`; an updated `CHANGELOG.md`; and a release workflow that
+publishes to PyPI ([D-80](DECISIONS.md#d-80-releases-publish-through-trusted-publishing)).
 
 **Exit criteria:** every item below is checked.
 

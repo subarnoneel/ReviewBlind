@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "ReviewBlind contributors" }]
 keywords = ["peer-review", "double-blind", "anonymization", "research", "static-analysis"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
@@ -37,6 +37,7 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/subarnoneel/ReviewBlind"
+Documentation = "https://github.com/subarnoneel/ReviewBlind/tree/main/docs"
 Issues = "https://github.com/subarnoneel/ReviewBlind/issues"
 Changelog = "https://github.com/subarnoneel/ReviewBlind/blob/main/CHANGELOG.md"
 

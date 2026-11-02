@@ -3,8 +3,8 @@
 **A deterministic, local-first CLI that preflights research repositories for accidental
 identity disclosure before double-anonymous peer review.**
 
-> **Status: pre-alpha, and not yet tested on real research repositories.** Every command works, on every file type
-> listed below. Progress is tracked in the [roadmap](docs/ROADMAP.md).
+> **Status: alpha.** Every command works on every file type listed below, and it has been run on three real research
+> repositories. Expect to find cases it misses, and please [report them](https://github.com/subarnoneel/ReviewBlind/blob/main/CONTRIBUTING.md#reporting-a-false-positive-or-a-missed-leak).
 
 ## Why
 
@@ -19,7 +19,15 @@ You removed your name from the README. But is it still in:
 ReviewBlind finds these before a reviewer does, and tells you exactly where each one is and
 why it matters.
 
-## How it will work
+## Install
+
+Requires Python 3.11 or later.
+
+```bash
+pip install reviewblind
+```
+
+## How it works
 
 ```bash
 # Find likely identities, confirm them, and write .reviewblind.toml
@@ -61,7 +69,7 @@ Notebook execution output exposes a personal workstation username.
 | Images | EXIF, GPS, PNG text metadata |
 | Packaging | `.git`, `.DS_Store`, archives, unknown binaries |
 
-See the [33 rules](docs/RULES.md).
+See the [33 rules](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/RULES.md).
 
 ## Design commitments
 
@@ -78,7 +86,7 @@ such as [Anonymous GitHub](https://github.com/tdurieux/anonymous_github) or
 [Hido](https://hido.fim.ai/); it helps you use them well.
 
 A report with no findings does **not** mean your artifact is anonymous. Please read the
-[limitations](docs/LIMITATIONS.md).
+[limitations](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/LIMITATIONS.md).
 
 > **Privacy note:** `.reviewblind.toml` and scan reports contain your identities in plain text.
 > Keep them out of the artifact you share.
@@ -87,18 +95,18 @@ A report with no findings does **not** mean your artifact is anonymous. Please r
 
 | Document | Contents |
 |---|---|
-| [PRODUCT](docs/PRODUCT.md) | What this is, who it is for, and what it refuses to do |
-| [SRS](docs/SRS.md) | Testable requirements |
-| [CLI](docs/CLI.md) | Commands, flags, exit codes |
-| [CONFIG](docs/CONFIG.md) | `.reviewblind.toml` reference |
-| [RULES](docs/RULES.md) | Every rule, with severity for each target |
-| [REPORT_SCHEMA](docs/REPORT_SCHEMA.md) | JSON and Markdown report formats |
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | Internal design |
-| [THREAT_MODEL](docs/THREAT_MODEL.md) | Deanonymization vectors, and attacks on the tool itself |
-| [LIMITATIONS](docs/LIMITATIONS.md) | What ReviewBlind cannot see |
-| [TEST_PLAN](docs/TEST_PLAN.md) | How requirements are verified |
-| [ROADMAP](docs/ROADMAP.md) | Milestones and the definition of done |
-| [DECISIONS](docs/DECISIONS.md) | Why ambiguous points were resolved as they were |
+| [PRODUCT](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/PRODUCT.md) | What this is, who it is for, and what it refuses to do |
+| [SRS](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/SRS.md) | Testable requirements |
+| [CLI](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/CLI.md) | Commands, flags, exit codes |
+| [CONFIG](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/CONFIG.md) | `.reviewblind.toml` reference |
+| [RULES](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/RULES.md) | Every rule, with severity for each target |
+| [REPORT_SCHEMA](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/REPORT_SCHEMA.md) | JSON and Markdown report formats |
+| [ARCHITECTURE](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/ARCHITECTURE.md) | Internal design |
+| [THREAT_MODEL](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/THREAT_MODEL.md) | Deanonymization vectors, and attacks on the tool itself |
+| [LIMITATIONS](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/LIMITATIONS.md) | What ReviewBlind cannot see |
+| [TEST_PLAN](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/TEST_PLAN.md) | How requirements are verified |
+| [ROADMAP](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/ROADMAP.md) | Milestones and the definition of done |
+| [DECISIONS](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/DECISIONS.md) | Why ambiguous points were resolved as they were |
 
 ## Development
 
@@ -112,9 +120,9 @@ uv run ruff format --check .
 uv run mypy
 ```
 
-See [CONTRIBUTING](CONTRIBUTING.md).
+See [CONTRIBUTING](https://github.com/subarnoneel/ReviewBlind/blob/main/CONTRIBUTING.md).
 
 ## License
 
-[GNU AGPL-3.0-or-later](LICENSE). ReviewBlind depends on PyMuPDF, which is available under the
-AGPL or a commercial licence. See [the decision log](docs/DECISIONS.md#d-01-licence-is-agpl-30-or-later).
+[GNU AGPL-3.0-or-later](https://github.com/subarnoneel/ReviewBlind/blob/main/LICENSE). ReviewBlind depends on PyMuPDF, which is available under the
+AGPL or a commercial licence. See [the decision log](https://github.com/subarnoneel/ReviewBlind/blob/main/docs/DECISIONS.md#d-01-licence-is-agpl-30-or-later).

@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Version** | `0.1.0.dev0` |
+| **Version** | `0.1.0` |
 | **Target** | mirror |
 | **Root** | `~/research/my-paper` |
 | **Config** | `.reviewblind.toml` |
@@ -312,7 +312,7 @@
 
 ### RB402 - Identifying Git author/committer
 
-- **Location:** `.git`, commit `c09ab5dffa0e`
+- **Location:** `.git`, commit `0521134d8068`
 - **Confidence:** HIGH
 - **Evidence:** `Alice Example`
 - **Reason:** Full history is public on a repository and is packaged with .git.
@@ -321,7 +321,7 @@
 
 ### RB403 - Identifying Git email
 
-- **Location:** `.git`, commit `c09ab5dffa0e`
+- **Location:** `.git`, commit `0521134d8068`
 - **Confidence:** HIGH
 - **Evidence:** `alice@example.edu`
 - **Reason:** Full history is public on a repository and is packaged with .git.
@@ -330,7 +330,7 @@
 
 ### RB404 - Identity in commit message
 
-- **Location:** `.git`, commit `c09ab5dffa0e`
+- **Location:** `.git`, commit `0521134d8068`
 - **Confidence:** HIGH
 - **Evidence:** `Signed-off-by: Alice Example <alice@example.edu>`
 - **Reason:** Commit messages travel with the history.
@@ -339,7 +339,7 @@
 
 ### RB404 - Identity in commit message
 
-- **Location:** `.git`, commit `c09ab5dffa0e`
+- **Location:** `.git`, commit `0521134d8068`
 - **Confidence:** HIGH
 - **Evidence:** `Signed-off-by: Alice Example <alice@example.edu>`
 - **Reason:** Commit messages travel with the history.
